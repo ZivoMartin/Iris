@@ -3,7 +3,7 @@ mod tokenizer;
 use std::process::{exit, ExitCode};
 use std::env;
 use std::thread::spawn;
-use tokenizer::{include::Token, tokenizer::Tokenizer};
+use tokenizer::{include::{Token, TokenType}, tokenizer::Tokenizer};
 use std::sync::mpsc::channel;
 
 static OK: u8 = 0;
@@ -77,24 +77,40 @@ fn main() -> ExitCode{
         eprintln!("COMMAND LINE ERROR: You cannot at the same time load a file and a query, do it in two separate steps.");
         exit(1);
     }
+    let mut keep_compile = false;
     if !req.request.is_empty() {
         spawn(move ||
               tokenizer.tokenize_query(&req.request)
         );
+        keep_compile = true;
     } else if !req.file_sql.is_empty() {
         spawn(move ||
               tokenizer.tokenize_file(&req.file_sql)
         );
+        keep_compile = true;
     }
    
-    let mut keep_compile: bool = true;
+    let mut c = 0;
     while keep_compile {
         match receiver.recv(){
-            Ok(token) => println!("New token : {}", token.content),
-            Err(_) => keep_compile = false
+            Ok(token) => {
+                if token.token_type == TokenType::ERROR {
+                    println!("ERROR: {}", token.content);
+                    keep_compile = false;
+                } else {
+                    c += (token.token_type == TokenType::New) as i32;
+                    c -= (token.token_type == TokenType::End) as i32;
+                    if c<0 {
+                        println!("error");
+                        exit(1);
+                    }
+                    println!("New token: {:?}", token);
+                }
+            },
+            Err(e) => keep_compile = false
         };
     }
-    println!("Everything is ok");
+    println!("Everything is ok: {c}");
     ExitCode::from(OK)
 }
 

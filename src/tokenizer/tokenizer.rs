@@ -41,6 +41,28 @@ fn build_identity_map() -> HashMap<fn(char)->bool, Vec<TokenType>> {
     res
 }
 
+fn compute_next_query(chars: &mut Peekable<Chars>) -> Result<String, String> {
+    let mut query = String::new();
+    let mut last = ';';
+    let mut comma = false;
+    while let Some(c) = chars.next() {
+        last = c;
+        query.push(c);
+        if c == ';' && !comma {
+            break;
+        }
+        if c == '\'' {
+            comma = !comma;
+        }
+    }
+    query = query.trim().to_string();
+    if last != ';' && !query.is_empty() {
+        eprintln!("ERROR: You forgot a comma");
+        Err(query)
+    } else {
+        Ok(query)
+    }
+}
 
 impl<'a> Tokenizer {
 
@@ -54,27 +76,35 @@ impl<'a> Tokenizer {
     }
 
     pub fn tokenize_file(&mut self, path: &str) {
-        let mut file = File::open(path.clone()).expect(&format!("File {} doesn't exists", path));
+        let mut file = File::open(path).expect(&format!("File {} doesn't exists", path));
         let mut file_content = String::new();
         file.read_to_string(&mut file_content).unwrap();
         match self.precompile(file_content, &path) {
-            Ok(s) => {  
-                let _ = s.split(";").map(|q| self.tokenize_query(q));
+            Ok(s) => {
+                let mut chars = s.chars().peekable();
+                while chars.peek().is_some() {
+                    let query = compute_next_query(&mut chars);
+                    if query.is_err() || self.tokenize_query(&query.unwrap()).is_err() {
+                        break;
+                    }
+                }
             }
             Err(e) => push_token(self, TokenType::ERROR, &e)
         }
     }
 
-    pub fn tokenize_query(&mut self, query: &str) {
+    pub fn tokenize_query(&mut self, query: &str) -> Result<(), ()>{
         let first_node = self.group_map.get(&TokenType::Request).unwrap();
         let mut chars = query.chars().peekable();
-        while chars.peek().is_some() {  
+        self.skip_garbage(&mut chars);
+        while chars.peek().is_some() {
             if self.travel(first_node, &mut chars).is_err() {
                 push_token(self, TokenType::ERROR, &FAIL_MESSAGE.to_string());
+                return Err(());
             }
             self.skip_garbage(&mut chars); 
         }   
-        push_token(self, TokenType::EndProgram, &String::new());
+        Ok(())
     }
     
     fn travel(&self, current_node: &'a Node, chars: &mut Peekable<Chars>) -> Result<(), i8> {
@@ -91,7 +121,7 @@ impl<'a> Tokenizer {
                         Ok(token_string) => {
                             match self.filter_nodes(&mut paths_vec, &token_string) {
                                 Some(path) => {
-                                    path.proke_travel_functions(self, &token_string);
+                                    path.proke_travel_functions(self, &token_string);                                                   
                                     for node in path.path.iter() {
                                         match self.travel(node, chars) {
                                             Ok(_) => {

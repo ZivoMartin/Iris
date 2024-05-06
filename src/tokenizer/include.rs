@@ -1,5 +1,17 @@
 use super::tokenizer::Tokenizer;
 
+use super::tokenizer::{
+    push_token,
+    push_group,
+    end_group,
+    push_once,
+    push_ending_group,
+    push_ending_once,
+    push_ending_token,
+    push_token_and_end,
+};
+
+
 #[allow(dead_code)]
 
 #[allow(dead_code)]
@@ -15,9 +27,37 @@ pub enum TokenType {
     Keyword,
 
     // Group Token
-    Program,
     Request,
+    CreateReq,
+    ResetReq,
+    InsertReq,
+    SelectReq,
+    UpdateReq,
+    FromWhereReq,
+    DeleteReq,
+    DropReq,
+    
+    Affectation,
+    SerieAffectation,
+    
+    Expression,
+    ExpressionTupple,
+    SerieExpression,
+    Value,
+    IdentTupple,
+    SerieIdent,
 
+    String,
+    SerieChar,
+    ComplexChar,
+    
+    Declaration,
+    PrimaryKey,
+    DefaultValue,
+    
+    DeclarationTuple,
+    SerieDeclaration,
+    
     // Flags
     NoFlag,
     New,
@@ -29,10 +69,10 @@ pub enum TokenType {
 }
 
 
-pub static TYPE_LIST: &[&'static str; 0] = &[];
+pub static TYPE_LIST: &[&'static str; 3] = &["BOOL", "INT", "STRING"];
 pub static OPERATORS: &[&'static str; 13] = &["+", "-", "*", "/", "%", "<", ">", "<=", ">=", "==", "!=", "||", "&&"];
 pub static AFFECT_OPERATOR: &[&'static str; 1] = &["="];
-static KEYWORD: &[&'static str; 0] = &[];
+static KEYWORD: &[&'static str; 13] = &["RESET", "CREATE", "TABLE", "INTO", "DROP", "VALUES", "SELECT", "PRIMARY", "KEY", "FROM", "WHERE", "UPDATE", "SET"];
 pub static OPERATOR_COMPONENT: &[char; 9] = &['+', '%', '/', '<', '>', '=', '|', '&', '!'];
 pub static DEFAULT_GARBAGE_CHARACTER: &[char; 3] = &[' ', '\n', '\t'];
 static PRIMITIVE_TOKENTYPE: &[TokenType; 6] = &[TokenType::Ident, TokenType::Type, TokenType::Symbol, TokenType::Number, TokenType::Operator, TokenType::Keyword];
@@ -156,6 +196,27 @@ impl Node {
     /// Build a new node wich can end the building of the group.
     pub fn new_end(type_token: TokenType, groups: Vec<Node>, sons: Vec<Node>) -> Node {
         Node::new_end_c(type_token, groups, sons, get_default_constraint(type_token))
+    }
+
+    pub fn comma_leaf_c(type_token: TokenType, constraints: Vec<&'static str>) -> Node {
+        Node::new_c(
+            type_token,
+            vec!(),
+            vec!(
+                Node::leaf_c(TokenType::Symbol, vec!(";")).react(end_group)
+            ),
+            constraints
+        )
+    }
+
+    pub fn comma_leaf(type_token: TokenType) -> Node {
+        Node::new(
+            type_token,
+            vec!(),
+            vec!(
+                Node::leaf_c(TokenType::Symbol, vec!(";")).react(end_group)
+            ),
+        )
     }
 
     pub fn new_c(type_token: TokenType, groups: Vec<Node>, sons: Vec<Node>, constraints: Vec<&'static str>) -> Node {
