@@ -1,15 +1,6 @@
 use std::collections::HashMap;
 use super::include::{Node, TokenType, AFFECT_OPERATOR};
-use super::tokenizer::{
-    push_token,
-    push_group,
-    end_group,
-    push_once,
-    push_ending_group,
-    push_ending_once,
-    push_ending_token,
-    push_token_and_end,
-};
+use super::tokenizer::push_token;
 
 pub fn build_grammar_tree() -> HashMap<TokenType, Node> {
     let mut group_map = HashMap::new();
@@ -18,13 +9,13 @@ pub fn build_grammar_tree() -> HashMap<TokenType, Node> {
         Node::new(
             TokenType::Request,
             vec!(
-                Node::leaf(TokenType::CreateReq).react(push_once),
-                Node::leaf(TokenType::ResetReq).react(push_once),
-                Node::leaf(TokenType::InsertReq).react(push_once),
-                Node::leaf(TokenType::SelectReq).react(push_once),
-                Node::leaf(TokenType::UpdateReq).react(push_once),
-                Node::leaf(TokenType::DeleteReq).react(push_once),
-                Node::leaf(TokenType::DropReq).react(push_once)
+                Node::leaf(TokenType::CreateReq),
+                Node::leaf(TokenType::ResetReq),
+                Node::leaf(TokenType::InsertReq),
+                Node::leaf(TokenType::SelectReq),
+                Node::leaf(TokenType::UpdateReq),
+                Node::leaf(TokenType::DeleteReq),
+                Node::leaf(TokenType::DropReq)
             ),
             vec!()
         )
@@ -36,7 +27,7 @@ pub fn build_grammar_tree() -> HashMap<TokenType, Node> {
             TokenType::ResetReq,
             vec!(),
             vec!(
-                Node::comma_leaf_c(TokenType::Keyword, vec!("RESET"))
+                Node::comma_leaf_c(TokenType::Keyword, vec!("RESET")).react(push_token)
             )
         )
     );
@@ -64,10 +55,10 @@ pub fn build_grammar_tree() -> HashMap<TokenType, Node> {
                                 ).react(push_token)
                             ),
                             vec!("TABLE")
-                        ).react(push_token)
+                        )
                     ),
                     vec!("CREATE")
-                )
+                ).react(push_token)
             )
         )
     );
@@ -85,7 +76,7 @@ pub fn build_grammar_tree() -> HashMap<TokenType, Node> {
                             TokenType::SerieDeclaration,
                             vec!(),
                             vec!(
-                                Node::leaf_c(TokenType::Symbol, vec!(")")).react(end_group)
+                                Node::leaf_c(TokenType::Symbol, vec!(")"))
                             )
                         )
                     ),
@@ -114,9 +105,9 @@ pub fn build_grammar_tree() -> HashMap<TokenType, Node> {
                             ),
                             vec!(),
                             vec!(",")
-                        ).react(end_group)
+                        )
                     )
-                ).react(push_once)
+                )
             ),
             vec!()
         )
@@ -173,11 +164,11 @@ pub fn build_grammar_tree() -> HashMap<TokenType, Node> {
                 Node::new_c(
                     TokenType::Keyword,
                     vec!(
-                        Node::leaf(TokenType::Expression).react(push_group)
+                        Node::leaf(TokenType::Expression)
                     ),
                     vec!(),
                     vec!("DEFAULT")
-                ).react(push_token)
+                )
             )
         )
     );
@@ -239,7 +230,7 @@ pub fn build_grammar_tree() -> HashMap<TokenType, Node> {
         Node::new(
             TokenType::Value,
             vec!(
-                Node::leaf(TokenType::String).react(push_group)
+                Node::leaf(TokenType::String)
             ),
             vec!(
                 Node::leaf(TokenType::Ident).react(push_token),
@@ -295,7 +286,7 @@ pub fn build_grammar_tree() -> HashMap<TokenType, Node> {
                         )
                     ),
                     vec!("INSERT")
-                )
+                ).react(push_token)
             )
         )
     );
@@ -368,9 +359,9 @@ pub fn build_grammar_tree() -> HashMap<TokenType, Node> {
                             ),
                             vec!(),
                             vec!(",")
-                        ).react(end_group)
+                        )
                     )
-                ).react(push_once),
+                ),
                 Node::new_end(
                     TokenType::String,
                     vec!(),
@@ -382,9 +373,9 @@ pub fn build_grammar_tree() -> HashMap<TokenType, Node> {
                             ),
                             vec!(),
                             vec!(",")
-                        ).react(end_group)
+                        )
                     )
-                ).react(push_once)
+                )
             ),
             vec!()
         )
@@ -404,7 +395,7 @@ pub fn build_grammar_tree() -> HashMap<TokenType, Node> {
                             TokenType::SerieExpression,
                             vec!(),
                             vec!(
-                                Node::leaf_c(TokenType::Symbol, vec!(")")).react(end_group)
+                                Node::leaf_c(TokenType::Symbol, vec!(")"))
                             ),
                         )
                     ), 
@@ -434,7 +425,7 @@ pub fn build_grammar_tree() -> HashMap<TokenType, Node> {
                     0
                 ).consider_garbage()
             )
-        ).react(push_group)
+        )
     );
 
     
@@ -449,7 +440,7 @@ pub fn build_grammar_tree() -> HashMap<TokenType, Node> {
                     vec!(
                         Node::leaf_c(TokenType::Symbol, vec!("\'"))
                     )
-                ).react(push_once).consider_garbage()
+                ).consider_garbage()
             ),
             vec!()
         )
@@ -462,12 +453,12 @@ pub fn build_grammar_tree() -> HashMap<TokenType, Node> {
             TokenType::ComplexChar,
             vec!(),
             vec!(
-                Node::leaf_c(TokenType::Symbol, vec!("\\", "\"", "\'")).priv_const().react(push_token_and_end), // N'importe quoi sauf la contrainte
+                Node::leaf_c(TokenType::Symbol, vec!("\\", "\"", "\'")).priv_const().react(push_token), // N'importe quoi sauf la contrainte
                 Node::new_c(
                     TokenType::Symbol,
                     vec!(),
                     vec!(
-                        Node::leaf(TokenType::Symbol).react(push_token_and_end)
+                        Node::leaf(TokenType::Symbol).react(push_token)
                     ),
                     vec!("\\")
                 ).react(push_token)
@@ -503,7 +494,7 @@ pub fn build_grammar_tree() -> HashMap<TokenType, Node> {
                         ).react(push_token)
                     ),
                     vec!("SELECT")
-                )
+                ).react(push_token)
             )
         )
     );
@@ -525,7 +516,7 @@ pub fn build_grammar_tree() -> HashMap<TokenType, Node> {
                                 Node::new_c(
                                     TokenType::Keyword,
                                     vec!(
-                                        Node::comma_leaf(TokenType::Expression).react(push_group)
+                                        Node::comma_leaf(TokenType::Expression)
                                     ),
                                     vec!(),
                                     vec!("WHERE")
@@ -562,12 +553,12 @@ pub fn build_grammar_tree() -> HashMap<TokenType, Node> {
                                             vec!(
                                                 Node::new_c(
                                                     TokenType::Keyword,
-                                                    vec!(Node::comma_leaf(TokenType::Expression).react(push_group)),
+                                                    vec!(Node::comma_leaf(TokenType::Expression)),
                                                     vec!(),
                                                     vec!("WHERE")
                                                 )
                                             )
-                                        ).react(end_group)
+                                        )
                                     ),
                                     vec!(),
                                     vec!("SET")
@@ -576,7 +567,7 @@ pub fn build_grammar_tree() -> HashMap<TokenType, Node> {
                         ).react(push_token)
                     ),
                     vec!("UPDATE")
-                )
+                ).react(push_token)
             )
         )
     );
@@ -597,9 +588,9 @@ pub fn build_grammar_tree() -> HashMap<TokenType, Node> {
                             ),
                             vec!(),
                             vec!(",")
-                        ).react(end_group)
+                        )
                     )
-                ).react(push_once)
+                )
             ),
             vec!()
         ),            
@@ -618,7 +609,7 @@ pub fn build_grammar_tree() -> HashMap<TokenType, Node> {
                         Node::new_c(
                             TokenType::Operator,
                             vec!(
-                                Node::leaf(TokenType::Expression).react(push_group),
+                                Node::leaf(TokenType::Expression),
                                 Node::leaf(TokenType::String),
                             ),
                             vec!(),
@@ -643,7 +634,7 @@ pub fn build_grammar_tree() -> HashMap<TokenType, Node> {
                     ),
                     vec!(),
                     vec!("DELETE")
-                )
+                ).react(push_token)
             )
         )
     );
@@ -668,7 +659,7 @@ pub fn build_grammar_tree() -> HashMap<TokenType, Node> {
                         )
                     ),
                     vec!("DROP")
-                )
+                ).react(push_token)
             ),
         )
     );

@@ -1,15 +1,6 @@
 use super::tokenizer::Tokenizer;
 
-use super::tokenizer::{
-    push_token,
-    push_group,
-    end_group,
-    push_once,
-    push_ending_group,
-    push_ending_once,
-    push_ending_token,
-    push_token_and_end,
-};
+use super::tokenizer::end_request;
 
 
 #[allow(dead_code)]
@@ -58,12 +49,9 @@ pub enum TokenType {
     DeclarationTuple,
     SerieDeclaration,
     
-    // Flags
     NoFlag,
-    New,
     End,
-    BackLine,  // Indicate a new back line
-    EndProgram,
+    BackLine,
     ERROR,   
     
 }
@@ -203,7 +191,7 @@ impl Node {
             type_token,
             vec!(),
             vec!(
-                Node::leaf_c(TokenType::Symbol, vec!(";")).react(end_group)
+                Node::leaf_c(TokenType::Symbol, vec!(";")).react(end_request)
             ),
             constraints
         )
@@ -214,7 +202,7 @@ impl Node {
             type_token,
             vec!(),
             vec!(
-                Node::leaf_c(TokenType::Symbol, vec!(";")).react(end_group)
+                Node::leaf_c(TokenType::Symbol, vec!(";")).react(end_request)
             ),
         )
     }

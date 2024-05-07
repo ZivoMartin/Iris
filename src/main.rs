@@ -1,5 +1,6 @@
 mod tokenizer;
-mod interp
+mod interpreteur;
+use interpreteur::interpreteur::Interpreteur;
 use std::process::{exit, ExitCode};
 use std::env;
 use std::thread::spawn;
@@ -90,7 +91,7 @@ fn main() -> ExitCode{
         keep_compile = true;
     }
    
-    let mut c = 0;
+    let mut interp = Interpreteur::new();
     while keep_compile {
         match receiver.recv(){
             Ok(token) => {
@@ -98,19 +99,19 @@ fn main() -> ExitCode{
                     println!("ERROR: {}", token.content);
                     keep_compile = false;
                 } else {
-                    c += (token.token_type == TokenType::New) as i32;
-                    c -= (token.token_type == TokenType::End) as i32;
-                    if c<0 {
-                        println!("error");
-                        exit(1);
+                    match interp.new_token(token) {
+                        Ok(()) => println!("Treatment valid"),
+                        Err(e) => {
+                            println!("ERROR: {e}");
+                            exit(1);
+                        }
                     }
-                    println!("New token: {:?}", token);
                 }
             },
             Err(e) => keep_compile = false
         };
     }
-    println!("Everything is ok: {c}");
+    println!("Everything is ok");
     ExitCode::from(OK)
 }
 

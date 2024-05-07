@@ -124,12 +124,7 @@ impl<'a> Tokenizer {
                                     path.proke_travel_functions(self, &token_string);                                                   
                                     for node in path.path.iter() {
                                         match self.travel(node, chars) {
-                                            Ok(_) => {
-                                                if node.travel_react == Some(push_group) ||
-                                                    node.travel_react == Some(end_after) {
-                                                    end_group(self, node.type_token, &token_string)
-                                                }
-                                            },
+                                            Ok(_) => (),
                                             Err(depth) => {
                                                 if current_node.retry != depth {
                                                     return Err(depth + 1)
@@ -328,40 +323,8 @@ pub fn push_token(tk: &Tokenizer, token_type: TokenType, content: &String) {
     tk.sender.send(Token::new(token_type, content.clone())).expect("Error while sending new token");
 }
 
-pub fn push_group(tk: &Tokenizer, token_type: TokenType, _content: &String) {
-    tk.sender.send(Token::new_wflag(TokenType::New, String::new(), token_type)).expect("Error while sending new group");
-}
-
-pub fn end_group(tk: &Tokenizer, _token_type: TokenType, _content: &String) {
+pub fn end_request(tk: &Tokenizer, _token_type: TokenType, _content: &String) {
     push_token(tk, TokenType::End, &String::new())
-}
-
-pub fn push_once(tk: &Tokenizer, token_type: TokenType, content: &String) {
-    push_group(tk, token_type, content)
-}
-
-pub fn push_ending_group(tk: &Tokenizer, token_type: TokenType, content: &String) {
-    end_group(tk, token_type, content);
-    push_group(tk, token_type, content);
-}
-
-pub fn push_ending_once(tk: &Tokenizer, token_type: TokenType, content: &String) {
-    end_group(tk, token_type, content);
-    push_once(tk, token_type, content);
-}
-
-pub fn push_ending_token(tk: &Tokenizer, token_type: TokenType, content: &String) {
-    end_group(tk, token_type, content);
-    push_token(tk, token_type, content);
-}
-
-pub fn push_token_and_end(tk: &Tokenizer, token_type: TokenType, content: &String) {
-    push_token(tk, token_type, content);
-    end_group(tk, token_type, content);
-}
-
-pub fn end_after(_tk: &Tokenizer, _token_type: TokenType, _content: &String) {
-    // Nothing to do here, the main function handle.
 }
 
 fn is_sign(c: char) -> bool {
