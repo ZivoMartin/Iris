@@ -1,6 +1,6 @@
-#RESET;
+RESET;
 CREATE TABLE Humain(id INT PRIMARY KEY, the_name STRING, age BOOL DEFAULT 1);
-#INSERT INTO Humain (id, the_name, age) VALUES (1, 'Joah', 20);
+INSERT INTO Humain (id, the_name, age) VALUES (1, 'Joah', 20);
 #INSERT INTO Humain (id, the_name, age) VALUES (2, 'Martin', 19);
 #INSERT INTO Humain (id, the_name, age) VALUES (3, 'Raghid', 17);
 #INSERT INTO Humain (id, the_name, age) VALUES (4, 'Dabi', 18);
@@ -9,4 +9,4 @@ CREATE TABLE Humain(id INT PRIMARY KEY, the_name STRING, age BOOL DEFAULT 1);
 #UPDATE Humain SET age=21 WHERE the_name == 'Joah';
 #SELECT age, the_name FROM Humain WHERE age>18;
 #DELETE FROM Humain WHERE age == 17; 
-#DROP TABLE Humain;
+DROP TABLE Humain;

@@ -14,9 +14,9 @@ pub struct ExpressionEvaluator {
 
 enum ExpTokenType {
     Operator(Operation),
-    Number(Number)
+    Number(Number),
+    Field
 }
-
 
 impl ExpressionEvaluator {
 
@@ -54,6 +54,10 @@ impl ExpressionEvaluator {
         self.pf_exp.push(ExpTokenType::Number(str::parse::<Number>(&number).unwrap()));
     }
 
+    pub fn new_field(&mut self) {
+        self.pf_exp.push(ExpTokenType::Field)
+    }
+
     /// ( -> Push it on the op stack
     /// ) -> pop the operators til we pop an opening bracket
     pub fn new_parenthesis(&mut self, par: String) {
@@ -81,12 +85,13 @@ impl ExpressionEvaluator {
     }
 
 
-    pub fn compute(&mut self) -> Number {
+    pub fn compute(&mut self, mut fields: Vec<Number>) -> Number {
         let mut number_stack = Stack::<Number>::new();
         for t in self.pf_exp.iter() {
             match t {
                 ExpTokenType::Operator(operation) => self.op_found(&mut number_stack, *operation),
                 ExpTokenType::Number(number) => self.number_found(&mut number_stack, *number),
+                ExpTokenType::Field => self.number_found(&mut number_stack, fields.pop().expect("Not enough field data."))
             }
         }
         number_stack.pop().unwrap()

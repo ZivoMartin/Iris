@@ -2,7 +2,7 @@ use super::include::*;
 
 /// Handle the CREATE TABLE request
 pub struct CreateReq {
-    table: Table,
+    table: Option<Table>,
     current_col: Option<Column>,
     pkey_exists: bool,
     expr: ExpressionEvaluator
@@ -13,17 +13,18 @@ impl Request for CreateReq {
 
     fn new() -> BoxedReq {
         Box::from(CreateReq {
-            table: Table::new(),
+            table: Some(Table::new()),
             current_col: Some(Column::new_empty()),
             pkey_exists: false,
             expr: ExpressionEvaluator::new()
         })
     }
 
-    fn end(mut self, database: &mut Database) -> BoxedReq where Self: Sized {
+    fn end(&mut self, database: &mut Database) {
         self.push_col();
-        database.add_table(self.table);
-        CreateReq::new()
+        database.add_table(self.table.take().expect("Create: Failed to unwrap the final table during the end method"));
+        self.table = Some(Table::new());
+        self.pkey_exists = false;
     }
     
     fn consume(&mut self, database: &mut Database, token: Token) -> ConsumeResult {
@@ -43,26 +44,26 @@ impl Request for CreateReq {
 impl CreateReq {
 
     fn table(&self) -> &Table {
-        &self.table
+        self.table.as_ref().expect("Create: Failed to unwrap the table when calling table method")
     }
     
     fn table_mut(&mut self) -> &mut Table {
-        &mut self.table
+        self.table.as_mut().expect("Create: Failed to unwrap the table when calling table_mut method")
     }
 
     
     fn col(&self) -> &Column {
-        self.current_col.as_ref().unwrap()
+        self.current_col.as_ref().expect("Create: Failed to unwrap the column when calling col method")
     }
     
     fn col_mut(&mut self) -> &mut Column {
-        self.current_col.as_mut().unwrap()
+        self.current_col.as_mut().expect("Create: Failed to unwrap the column when calling col_mut method")
     }
 
     fn extract_col(&mut self) -> Column {
         let mut result = self.current_col.take().unwrap();
         if !self.expr.is_empty() {
-            result.set_default_value(self.expr.compute());
+            result.set_default_value(self.expr.compute(vec!()));
         }
         self.current_col = Some(Column::new_empty());
         result

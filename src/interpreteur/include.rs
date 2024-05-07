@@ -1,7 +1,9 @@
-pub use crate::tokenizer::include::{Token, TokenType};
+ pub use crate::tokenizer::include::{Token, TokenType};
 pub use std::process::exit;
 pub use super::expression_evaluator::ExpressionEvaluator;
+pub use std::collections::HashMap;
 pub type ConsumeResult = Result<(), String>;
+
 
 #[derive(Debug)]
 pub enum Type {
@@ -146,7 +148,7 @@ impl Database {
     /// Add a table in the database, in the database of the program and in the one of the system
     pub fn add_table(&mut self, table: Table) {
         self.tables.push(table);
-        todo!("Save the table in the database")
+        // TODO: Save the table in the database
     }
 
     /// Indicate if the given table exists
@@ -157,6 +159,27 @@ impl Database {
             }
         }
         false
+    }
+
+
+    /// Delete the table in the database of the program and in the one of the system
+    pub fn delete_table(&mut self, name: &String) {
+        let mut to_delete: Option<usize> = None;
+        for (i, t) in self.tables.iter().enumerate() {
+            if t.name() == name {
+                to_delete = Some(i);
+                break;
+            }
+        }
+        if let Some(i) = to_delete {
+            self.tables.remove(i);
+        }
+        // TODO: Supprimer la table du système
+    }
+
+    pub fn reset_database(&mut self) {
+        self.tables = Vec::new();
+        // TODO: Supprimer toutes les tables du system
     }
     
 }
@@ -169,7 +192,7 @@ pub  trait Request {
 
     fn new() -> BoxedReq where Self: Sized;
 
-    fn end(self, database: &mut Database) -> BoxedReq where Self: Sized;
+    fn end(&mut self, database: &mut Database);
     
     fn panic_bad_token(&self, token: Token, name: &str) {
         eprintln!("Tried to conusme an unexpected token in {name}: {type_token:?}: {content}", type_token=token.token_type, content=token.content);

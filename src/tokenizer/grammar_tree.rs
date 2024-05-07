@@ -651,10 +651,10 @@ pub fn build_grammar_tree() -> HashMap<TokenType, Node> {
                     vec!(
                         Node::new_c(
                             TokenType::Keyword,
-                            vec!(),
                             vec!(
-                                Node::comma_leaf(TokenType::Ident).react(push_token)
+                                Node::comma_leaf(TokenType::SerieIdent)
                             ),
+                            vec!(),
                             vec!("TABLE")
                         )
                     ),

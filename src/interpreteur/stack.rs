@@ -18,6 +18,13 @@ impl<T> Stack<T>{
         res
     }
 
+    // pub fn clone(&self) -> Stack<T> {
+    //     Stack {
+    //         vec: self.vec.clone()
+    //     }
+    // }
+    
+    
     pub fn push(&mut self, x: T){
         self.vec.push(x);
     }
@@ -45,4 +52,15 @@ impl<T> Stack<T>{
     pub fn change_top(&mut self, new: T) {
         *self.val_mut().unwrap() = new;
     }
+
 } 
+
+impl<T> Clone for Stack<T> where T: Clone {
+
+    fn clone(&self) -> Stack<T> {
+        Stack {
+            vec: self.vec.clone()
+        }
+    }
+    
+}
