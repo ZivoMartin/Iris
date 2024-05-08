@@ -89,7 +89,7 @@ impl<'a> Tokenizer {
                     }
                 }
             }
-            Err(e) => push_token(self, TokenType::ERROR, &e)
+            Err(e) => push_token(self, TokenType::ERROR, &e, Flag::NoFlag)
         }
     }
 
@@ -99,7 +99,7 @@ impl<'a> Tokenizer {
         self.skip_garbage(&mut chars);
         while chars.peek().is_some() {
             if self.travel(first_node, &mut chars).is_err() {
-                push_token(self, TokenType::ERROR, &FAIL_MESSAGE.to_string());
+                push_token(self, TokenType::ERROR, &FAIL_MESSAGE.to_string(), Flag::NoFlag);
                 return Err(());
             }
             self.skip_garbage(&mut chars); 
@@ -268,7 +268,7 @@ impl<'a> Tokenizer {
                     break;
                 }
                 if *c == '\n' {
-                    push_token(self, TokenType::BackLine, &String::new())
+                    push_token(self, TokenType::BackLine, &String::new(), Flag::NoFlag)
                 }
                 chars.next();
             }
@@ -319,12 +319,12 @@ impl<'a> Tokenizer {
 }
 
 
-pub fn push_token(tk: &Tokenizer, token_type: TokenType, content: &String) {
-    tk.sender.send(Token::new(token_type, content.clone())).expect("Error while sending new token");
+pub fn push_token(tk: &Tokenizer, token_type: TokenType, content: &String, flag: Flag) {
+    tk.sender.send(Token::new(token_type, content.clone(), flag)).expect("Error while sending new token");
 }
 
-pub fn end_request(tk: &Tokenizer, _token_type: TokenType, _content: &String) {
-    push_token(tk, TokenType::End, &String::new())
+pub fn end_request(tk: &Tokenizer, _token_type: TokenType, _content: &String, _flag: Flag) {
+    push_token(tk, TokenType::End, &String::new(), Flag::NoFlag)
 }
 
 fn is_sign(c: char) -> bool {

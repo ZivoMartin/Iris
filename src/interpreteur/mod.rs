@@ -4,5 +4,6 @@ mod drop_req;
 mod reset_req;
 mod insert_req;
 mod expression_evaluator;
+mod string_builder;
 mod stack;
 pub mod interpreteur;

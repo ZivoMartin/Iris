@@ -5,7 +5,8 @@ pub struct CreateReq {
     table: Option<Table>,
     current_col: Option<Column>,
     pkey_exists: bool,
-    expr: ExpressionEvaluator
+    expr: ExpressionEvaluator,
+    string_builder: StringBuilder
 }
 
 
@@ -16,7 +17,8 @@ impl Request for CreateReq {
             table: Some(Table::new()),
             current_col: Some(Column::new_empty()),
             pkey_exists: false,
-            expr: ExpressionEvaluator::new()
+            expr: ExpressionEvaluator::new(),
+            string_builder: StringBuilder::new()
         })
     }
 
@@ -34,6 +36,7 @@ impl Request for CreateReq {
             TokenType::Type => self.new_type(token.content),
             TokenType::Operator => self.expr.new_operator(token.content),
             TokenType::Number => self.expr.new_number(token.content),
+            TokenType::Symbol => self.new_char(token.content),
             _ => self.panic_bad_token(token, "create")
         }
         Ok(())
@@ -64,12 +67,14 @@ impl CreateReq {
         let mut result = self.current_col.take().unwrap();
         if !self.expr.is_empty() {
             result.set_default_value(self.expr.compute(vec!()));
+        } else if !self.string_builder.is_empty() {
+            let hash = self.string_builder.hash();
         }
         self.current_col = Some(Column::new_empty());
         result
     }
     
-    pub fn new_ident(&mut self, database: &Database, name: String) -> ConsumeResult {
+    fn new_ident(&mut self, database: &Database, name: String) -> ConsumeResult {
         if !self.table().has_name() {
             if database.table_exists(&name) {
                 return Err(format!("The table {name} already exists."))
@@ -85,14 +90,14 @@ impl CreateReq {
         Ok(())
     }
 
-    pub fn push_col(&mut self) {
+    fn push_col(&mut self) {
          if !self.col().is_empty() {
              let col = self.extract_col();
              self.table_mut().add_column(col);
          }
     }
     
-    pub fn pkey_exists(&self) -> bool {
+    fn pkey_exists(&self) -> bool {
         self.pkey_exists
     }
 
@@ -106,7 +111,7 @@ impl CreateReq {
         }
     }
     
-    pub fn new_keyword(&mut self, kw: String) -> ConsumeResult {
+    fn new_keyword(&mut self, kw: String) -> ConsumeResult {
         match &kw as &str {
             "PRIMARY" => self.def_pkey()?,
             _ => panic!("Unknow keyword: {kw}")
@@ -114,8 +119,12 @@ impl CreateReq {
         Ok(())
     }
 
-    pub fn new_type(&mut self, type_string: String) {
+    fn new_type(&mut self, type_string: String) {
         self.col_mut().set_type(from_string_to_type(type_string))
+    }
+
+    fn new_char(&mut self, c: String) {
+        self.string_builder.new_char(c)
     }
     
 }

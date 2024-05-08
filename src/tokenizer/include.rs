@@ -49,11 +49,17 @@ pub enum TokenType {
     DeclarationTuple,
     SerieDeclaration,
     
-    NoFlag,
     End,
     BackLine,
     ERROR,   
     
+}
+
+#[derive(Debug)]
+#[derive(PartialEq)]
+pub enum Flag {
+    Comma,
+    NoFlag
 }
 
 
@@ -72,27 +78,49 @@ pub static FAIL_MESSAGE: &str = "Syntax error";
 pub struct Token {
     pub token_type: TokenType,
     pub content: String,
-    pub flag: TokenType 
+    pub flag: Flag 
 }
 
 impl Token {
-    pub fn new(token_type: TokenType, content: String) -> Token {
-        Token{token_type, content, flag: TokenType::NoFlag}
+    pub fn new(token_type: TokenType, content: String, flag: Flag) -> Token {
+        Token{token_type, content, flag}
     }
 
     #[allow(dead_code)]
     pub fn empty(token_type: TokenType) -> Token {
-        Token{token_type, content: String::new(), flag: TokenType::NoFlag}
+        Token::new(token_type, String::new(), Flag::NoFlag)
     }
 
-    pub fn new_wflag(token_type: TokenType, content: String, flag: TokenType) -> Token {
-        Token{token_type, content, flag}
-    }}
+    pub fn content(&self) -> &String {
+        &self.content
+    }
 
-impl Copy for TokenType{}
+    pub fn content_mut(&mut self) -> &mut String {
+        &mut self.content
+    }
+
+    pub fn flag(&self) -> Flag {
+        self.flag
+    }
+
+    pub fn token_type(&self) -> TokenType {
+        self.token_type
+    }
+    
+}
+
+impl Copy for TokenType {}
+
+impl Copy for Flag {}
 
 impl Clone for TokenType {
     fn clone(&self) -> TokenType {
+        return *self
+    }
+}
+
+impl Clone for Flag {
+    fn clone(&self) -> Flag {
         return *self
     }
 }
@@ -115,7 +143,7 @@ impl<'a> Path<'a> {
     pub fn proke_travel_functions(&self, tokenizer: &Tokenizer, token_string: &String) {
         for node in self.path.iter().rev() {
             if node.travel_react.is_some() {
-                (node.travel_react.unwrap())(tokenizer, node.type_token, token_string)
+                (node.travel_react.unwrap())(tokenizer, node.type_token, token_string, node.flag)
             }
         }
     } 
@@ -124,13 +152,14 @@ impl<'a> Path<'a> {
 #[derive(Debug)]
 pub struct Node {
     pub type_token: TokenType,
+    pub flag: Flag,
     pub groups: Vec<Node>, 
     pub sons: Vec<Node>,
     pub can_end: bool,
     pub constraints: (Vec::<&'static str>, bool),
     pub consider_garbage: bool,
     pub retry: i8,
-    pub travel_react: Option::<fn(&Tokenizer, TokenType, &String)>
+    pub travel_react: Option::<fn(&Tokenizer, TokenType, &String, Flag)>
 }
 
 
@@ -173,7 +202,7 @@ impl Node {
     }
 
     pub fn new_c_r(type_token: TokenType, groups: Vec<Node>, sons: Vec<Node>, constraints: Vec<&'static str>, depth: i8) -> Node {
-        Node{type_token, groups, sons, can_end: true, constraints: (constraints, true), consider_garbage: false, retry: depth, travel_react: None}.check_son()        
+        Node{type_token, flag: Flag::NoFlag, groups, sons, can_end: true, constraints: (constraints, true), consider_garbage: false, retry: depth, travel_react: None}.check_son()        
     }
 
     /// Build a leaf, a leaf has to be builded
@@ -208,7 +237,7 @@ impl Node {
     }
 
     pub fn new_c(type_token: TokenType, groups: Vec<Node>, sons: Vec<Node>, constraints: Vec<&'static str>) -> Node {
-        Node{type_token, groups, sons, can_end: false, constraints: (constraints, true), consider_garbage: false, retry: -1, travel_react: None}.check_son()
+        Node{type_token, flag: Flag::NoFlag, groups, sons, can_end: false, constraints: (constraints, true), consider_garbage: false, retry: -1, travel_react: None}.check_son()
     }
 
     pub fn leaf_c(type_token: TokenType, constraints: Vec<&'static str>) -> Node {
@@ -216,7 +245,7 @@ impl Node {
     }
 
     pub fn new_end_c(type_token: TokenType, groups: Vec<Node>, sons: Vec<Node>, constraints: Vec<&'static str>) -> Node {
-        Node{type_token, groups, sons, can_end: true, constraints: (constraints, true), consider_garbage: false, retry: -1, travel_react: None}.check_son()
+        Node{type_token, flag: Flag::NoFlag, groups, sons, can_end: true, constraints: (constraints, true), consider_garbage: false, retry: -1, travel_react: None}.check_son()
     }
 
     pub fn is_leaf(&self) -> bool {
@@ -233,13 +262,18 @@ impl Node {
         self.constraints.0.is_empty() || contains && self.constraints.1 || !contains && !self.constraints.1
     }
 
-    pub fn react(mut self, r: fn(&Tokenizer, TokenType, &String)) -> Node {
+    pub fn react(mut self, r: fn(&Tokenizer, TokenType, &String, Flag)) -> Node {
         self.travel_react = Some(r);
         self
     }
 
     pub fn consider_garbage(mut self) -> Node {
         self.consider_garbage = true;
+        self
+    }
+
+    pub fn set_flag(mut self, flag: Flag) -> Node {
+        self.flag = flag;
         self
     }
 }
