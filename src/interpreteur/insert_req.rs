@@ -32,7 +32,7 @@ impl Request for InsertReq {
             TokenType::Ident => self.new_ident(token.content, database)?,
             TokenType::Operator => self.expr.new_operator(token.content),
             TokenType::Number => self.expr.new_number(token.content),
-            TokenType::Symbol => self.new_char(token.content, token.flag),
+            TokenType::Symbol => self.new_char(token.content, token.flag, database)?,
             _ => self.panic_bad_token(token, "drop")
         }
         Ok(())
@@ -73,8 +73,32 @@ impl InsertReq {
         Ok(())
     }
 
-    fn new_char(&mut self, c: String,  flag: Flag) {
-        todo!("Handle string and comma");
+    fn new_char(&mut self, c: String, flag: Flag, database: &Database) -> ConsumeResult {
+        if flag == Flag::Comma {
+            self.save_value(database)?;
+        } else {
+            self.string_builder.new_char(c);
+        }
+        Ok(())
+    }
+
+    fn save_value(&mut self, database: &Database) -> ConsumeResult {
+        if self.asked_cols.len() < self.values.len() {
+            return Err(format!("Error during insert request in the table {}, you put more values than column.", self.table_name))
+        }
+        let column = database.get_table(&self.table_name).get_column(&self.asked_cols[self.values.len()]);
+        if self.string_builder.is_empty() {
+            if column.get_type() == Type::String {
+                return Err(format!("Error during insert request in the table {}, a string was expected for the column {}.", self.table_name, column.name()))
+            }
+            self.values.push(Value::new_by_val(self.expr.compute(vec!())));
+        } else {
+            if column.get_type() != Type::String {
+                return Err(format!("Error during insert request in the table {}, the column {} doesn't have the String type.", self.table_name, column.name()))
+            }
+            self.values.push(Value::new_by_string(&mut self.string_builder, false))
+        }
+        Ok(())
     }
     
 }

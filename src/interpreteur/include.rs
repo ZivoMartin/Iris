@@ -7,17 +7,28 @@ pub type ConsumeResult = Result<(), String>;
 
 
 #[derive(Debug)]
+#[derive(PartialEq)]
 pub enum Type {
-    INT,
-    STRING,
-    BOOL
+    Int,
+    String,
+    Bool
+}
+
+impl Copy for Type {}
+
+impl Clone for Type {
+
+    fn clone(&self) -> Type {
+        *self
+    }
+    
 }
 
 pub fn from_string_to_type(s: String) -> Type {
     match &s as &str {
-        "INT" => Type::INT,
-        "STRING" => Type::STRING,
-        "BOOL" => Type::BOOL,
+        "INT" => Type::Int,
+        "STRING" => Type::String,
+        "BOOL" => Type::Bool,
         _ => panic!("Type {s} doesn't exist")
             
     }
@@ -31,14 +42,14 @@ pub struct Value {
 
 impl Value {
 
-    fn new_by_val(val: i64) -> Value {
+    pub fn new_by_val(val: i64) -> Value {
         Value {
             number: val,
             string: format!("{val}")
         }
     }
 
-    fn new_by_string(mut s: StringBuilder, hash: bool) -> Value {
+    pub fn new_by_string(mut s: &mut StringBuilder, hash: bool) -> Value {
         let val = if hash { (s.hash()/2).try_into().expect("Failed to convert the u32 hash to i32") } else { 0 };
         Value {
             number: val,
@@ -75,7 +86,7 @@ impl Column {
     pub fn new_empty() -> Column {
         Column {
             name: String::new(),
-            type_col: Type::INT,
+            type_col: Type::Int,
             is_p_key: false,
             default_value: None,
             flag: false
@@ -98,7 +109,11 @@ impl Column {
         self.default_value = Some(Value::new_by_val(val))
     }
 
-    pub fn set_value_by_string(&mut self, s: StringBuilder) {
+    pub fn get_type(&self) -> Type {
+        self.type_col
+    }
+    
+    pub fn set_value_by_string(&mut self, s: &mut StringBuilder) {
         self.default_value = Some(Value::new_by_string(s, false));
     }
     
@@ -167,7 +182,7 @@ impl Table {
     }
 
     
-    pub fn get_column(&mut self, name: &String) -> &Column {
+    pub fn get_column(&self, name: &String) -> &Column {
         self.columns.get(name).expect(&format!("ERROR: Column {name} doesn't exists in the table {}", self.name))
     }
 

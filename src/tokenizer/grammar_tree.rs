@@ -423,7 +423,7 @@ pub fn build_grammar_tree() -> HashMap<TokenType, Node> {
                     vec!(),
                     vec!("\'"),
                     0
-                ).consider_garbage().react(push_token)
+                ).consider_garbage()
             )
         )
     );

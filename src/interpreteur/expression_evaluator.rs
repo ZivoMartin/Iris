@@ -9,7 +9,7 @@ pub struct ExpressionEvaluator {
     pf_exp: Vec<ExpTokenType>,
     operator_priority: HashMap<String, u8>,
     op_map: HashMap<String, Operation>,
-    
+    fields: Vec<String>
 }
 
 enum ExpTokenType {
@@ -25,7 +25,8 @@ impl ExpressionEvaluator {
             op_stack: Stack::new(),
             pf_exp: Vec::new(),
             operator_priority: build_prio_map(),
-            op_map: build_op_map()
+            op_map: build_op_map(),
+            fields: Vec::new()
         }
     }
 
@@ -54,8 +55,9 @@ impl ExpressionEvaluator {
         self.pf_exp.push(ExpTokenType::Number(str::parse::<Number>(&number).unwrap()));
     }
 
-    pub fn new_field(&mut self) {
-        self.pf_exp.push(ExpTokenType::Field)
+    pub fn new_field(&mut self, field_name: String) {
+        self.pf_exp.push(ExpTokenType::Field);
+        self.fields.push(field_name)
     }
 
     /// ( -> Push it on the op stack
