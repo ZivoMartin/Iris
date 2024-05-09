@@ -1,4 +1,3 @@
-use super::include::*;
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 
@@ -32,10 +31,10 @@ impl StringBuilder {
         self.string_mut().push_str(&c);
     }
 
-    pub fn hash(&self) -> u64 {
+    pub fn hash(&self) -> i64 {
         let mut s = DefaultHasher::new();
         self.string().hash(&mut s);
-        s.finish()
+        (s.finish()/2) as i64
     }
 
     pub fn is_empty(&self) -> bool {

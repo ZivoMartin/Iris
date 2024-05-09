@@ -1,4 +1,4 @@
-use super::include::*;
+use crate::interpreteur::include::*;
 
 /// Handle the CREATE TABLE request
 pub struct CreateReq {
@@ -22,11 +22,15 @@ impl Request for CreateReq {
         })
     }
 
-    fn end(&mut self, database: &mut Database) {
+    fn end(&mut self, database: &mut Database) -> ConsumeResult{
+        if !self.pkey_exists {
+            return Err(format!("Error during the creation of the table {}, you didn' indicate a primary key", self.table().name()))
+        }
         self.push_col();
         database.add_table(self.table.take().expect("Create: Failed to unwrap the final table during the end method"));
         self.table = Some(Table::new());
         self.pkey_exists = false;
+        Ok(())
     }
     
     fn consume(&mut self, database: &mut Database, token: Token) -> ConsumeResult {
@@ -66,9 +70,9 @@ impl CreateReq {
     fn extract_col(&mut self) -> Column {
         let mut result = self.current_col.take().unwrap();
         if !self.expr.is_empty() {
-            result.set_default_value(self.expr.compute(vec!()));
+            result.set_default_value(self.expr.compute(vec!(), true)); 
         } else if !self.string_builder.is_empty() {
-            let hash = self.string_builder.hash();
+            result.set_value_by_string(&mut self.string_builder)
         }
         self.current_col = Some(Column::new_empty());
         result

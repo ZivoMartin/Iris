@@ -1,4 +1,4 @@
-use super::include::*;
+use crate::interpreteur::include::*;
 
 pub struct InsertReq {
     table_name: String,
@@ -20,11 +20,22 @@ impl Request for InsertReq {
         })
     }
 
-    fn end(&mut self, database: &mut Database) {
+    fn end(&mut self, database: &mut Database) -> ConsumeResult {
+        self.save_value(database)?;
+        if self.values.len() != self.asked_cols.len() {
+            return Err(format!("Error during the insertion of the table {}, the number of value is less than the number of columns.", self.table_name))
+        } 
+        for (_, c) in database.get_table(&self.table_name).get_cols().iter() {
+            if !c.has_default_value() && !c.flag() {
+                return Err(format!("Error during the insertion of the table {}, the column {} doesn't have a default value and you didn't indicate his value.", self.table_name, c.name()))
+            }
+        }
+        
         database.get_table_mut(&self.table_name).reset_all_flags();
         self.table_name.clear();
         self.asked_cols.clear();
         self.values.clear();
+        Ok(())
     }
     
     fn consume(&mut self, database: &mut Database, token: Token) -> ConsumeResult {
@@ -91,7 +102,7 @@ impl InsertReq {
             if column.get_type() == Type::String {
                 return Err(format!("Error during insert request in the table {}, a string was expected for the column {}.", self.table_name, column.name()))
             }
-            self.values.push(Value::new_by_val(self.expr.compute(vec!())));
+            self.values.push(Value::new_by_val(self.expr.compute(vec!(), true)));
         } else {
             if column.get_type() != Type::String {
                 return Err(format!("Error during insert request in the table {}, the column {} doesn't have the String type.", self.table_name, column.name()))

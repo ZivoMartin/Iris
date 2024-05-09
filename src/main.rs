@@ -100,7 +100,7 @@ fn main() -> ExitCode{
                     keep_compile = false;
                 } else {
                     match interp.new_token(token) {
-                        Ok(()) => println!("Treatment valid"),
+                        Ok(()) => (),
                         Err(e) => {
                             println!("ERROR: {e}");
                             exit(1);

@@ -299,7 +299,7 @@ impl<'a> Tokenizer {
         Ok(vec.join(""))
     }
 
-    fn new_precompile_macro(&self, m: String, current_file_path: &str) -> Result<String, String> {
+    fn new_precompile_macro(&self, m: String, _current_file_path: &str) -> Result<String, String> {
         let split: Vec<&str> = m.split_whitespace().collect();
         match &split[0] as &str {
             _ => Err(format!("Unknow token: {}", split[0]))

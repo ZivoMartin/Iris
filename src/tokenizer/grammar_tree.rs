@@ -520,12 +520,12 @@ pub fn build_grammar_tree() -> HashMap<TokenType, Node> {
                                     ),
                                     vec!(),
                                     vec!("WHERE")
-                                )
+                                ).react(push_token)
                             )
                         ).react(push_token)
                     ),
                     vec!("FROM")
-                )
+                ).react(push_token)
             )
         )
     );

@@ -1,4 +1,4 @@
-use super::include::*;
+use crate::interpreteur::include::*;
 
 pub struct DropReq;
 
@@ -8,7 +8,9 @@ impl Request for DropReq {
         Box::from(DropReq)
     }
 
-    fn end(&mut self, _database: &mut Database) {}
+    fn end(&mut self, _database: &mut Database) -> ConsumeResult {
+        Ok(())
+    }
     
     fn consume(&mut self, database: &mut Database, token: Token) -> ConsumeResult {
         match token.token_type {

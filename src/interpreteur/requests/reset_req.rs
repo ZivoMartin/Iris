@@ -1,4 +1,4 @@
-use super::include::*;
+use crate::interpreteur::include::*;
 
 pub struct ResetReq;
 
@@ -8,8 +8,9 @@ impl Request for ResetReq {
         Box::from(ResetReq)
     }
 
-    fn end(&mut self, database: &mut Database) {
+    fn end(&mut self, database: &mut Database) -> ConsumeResult {
         database.reset_database();
+        Ok(())
     }
     
     fn consume(&mut self, database: &mut Database, token: Token) -> ConsumeResult {

@@ -24,8 +24,8 @@ impl ExpressionEvaluator {
         ExpressionEvaluator {
             op_stack: Stack::new(),
             pf_exp: Vec::new(),
-            operator_priority: build_prio_map(),
-            op_map: build_op_map(),
+            operator_priority: ExpressionEvaluator::build_prio_map(),
+            op_map: ExpressionEvaluator::build_op_map(),
             fields: Vec::new()
         }
     }
@@ -55,6 +55,11 @@ impl ExpressionEvaluator {
         self.pf_exp.push(ExpTokenType::Number(str::parse::<Number>(&number).unwrap()));
     }
 
+    pub fn new_direct_number(&mut self, number: Number) {
+        self.pf_exp.push(ExpTokenType::Number(number));
+    }
+
+
     pub fn new_field(&mut self, field_name: String) {
         self.pf_exp.push(ExpTokenType::Field);
         self.fields.push(field_name)
@@ -83,11 +88,14 @@ impl ExpressionEvaluator {
 
     fn push_op_val(&mut self) {
         let operation: Operation = *self.op_map.get(&self.op_stack.pop().unwrap()).unwrap();
-        self.pf_exp.push(ExpTokenType::Operator(operation));    
+        self.pf_exp.push(ExpTokenType::Operator(operation));
     }
 
 
-    pub fn compute(&mut self, mut fields: Vec<Number>) -> Number {
+    pub fn compute(&mut self, mut fields: Vec<Number>, clear: bool) -> Number {
+        while !self.op_stack.is_empty() {
+            self.push_op_val();
+        }
         let mut number_stack = Stack::<Number>::new();
         for t in self.pf_exp.iter() {
             match t {
@@ -95,6 +103,10 @@ impl ExpressionEvaluator {
                 ExpTokenType::Number(number) => self.number_found(&mut number_stack, *number),
                 ExpTokenType::Field => self.number_found(&mut number_stack, fields.pop().expect("Not enough field data."))
             }
+        }
+        if clear {
+            self.pf_exp.clear();
+            self.fields.clear();
         }
         number_stack.pop().unwrap()
     }
@@ -109,39 +121,44 @@ impl ExpressionEvaluator {
         number_stack.push(number)
     }
 
-
-}
-
-fn build_prio_map() -> HashMap<String, u8>{
-    let mut res = HashMap::<String, u8>::new();
-    for op in vec!["%", "*", "/"].iter() {
-        res.insert(String::from(*op), 4);
+    pub fn fields(&self) -> &Vec<String> {
+        &self.fields
     }
-    for op in vec!("<", "<=", ">", ">=", "==", "!=", "||", "&&").iter() {
-        res.insert(String::from(*op), 2);
+
+    
+    fn build_prio_map() -> HashMap<String, u8>{
+        let mut res = HashMap::<String, u8>::new();
+        for op in vec!["%", "*", "/"].iter() {
+            res.insert(String::from(*op), 4);
+        }
+        for op in vec!("<", "<=", ">", ">=", "==", "!=", "||", "&&").iter() {
+            res.insert(String::from(*op), 2);
+        }
+        res.insert(String::from("+"), 3);
+        res.insert(String::from("-"), 3);
+        res.insert(String::from(")"), 4);
+        res.insert(String::from("("), 5);
+        res
     }
-    res.insert(String::from("+"), 3);
-    res.insert(String::from("-"), 3);
-    res.insert(String::from(")"), 4);
-    res.insert(String::from("("), 5);
-    res
+
+    fn build_op_map() -> HashMap<String, Operation> {
+        let mut res = HashMap::<String, Operation>::new();
+        res.insert(String::from("%"), |n1, n2| n1 % n2);
+        res.insert(String::from("*"), |n1, n2| n1 * n2);
+        res.insert(String::from("+"), |n1, n2| n1 + n2);
+        res.insert(String::from("-"), |n1, n2| n1 - n2);
+        res.insert(String::from("<"), |n1, n2| (n1 < n2) as Number);
+        res.insert(String::from("<="), |n1, n2| (n1 <= n2) as Number);
+        res.insert(String::from(">"), |n1, n2| (n1 > n2) as Number);
+        res.insert(String::from(">="), |n1, n2| (n1 >= n2) as Number);
+        res.insert(String::from("=="), |n1, n2| (n1 == n2) as Number);
+        res.insert(String::from("!="), |n1, n2| (n1 != n2) as Number);
+        res.insert(String::from("||"), |n1, n2| ((n1 != 0) || (n2 != 0)) as Number);
+        res.insert(String::from("&&"), |n1, n2| ((n1 != 0) && (n2 != 0)) as Number);
+        res
+    }
+    
+
+
+    
 }
-
-fn build_op_map() -> HashMap<String, Operation> {
-    let mut res = HashMap::<String, Operation>::new();
-    res.insert(String::from("%"), |n1, n2| n1 % n2);
-    res.insert(String::from("*"), |n1, n2| n1 * n2);
-    res.insert(String::from("+"), |n1, n2| n1 + n2);
-    res.insert(String::from("-"), |n1, n2| n1 - n2);
-    res.insert(String::from("<"), |n1, n2| (n1 < n2) as Number);
-    res.insert(String::from("<="), |n1, n2| (n1 <= n2) as Number);
-    res.insert(String::from(">"), |n1, n2| (n1 > n2) as Number);
-    res.insert(String::from(">="), |n1, n2| (n1 >= n2) as Number);
-    res.insert(String::from("=="), |n1, n2| (n1 == n2) as Number);
-    res.insert(String::from("!="), |n1, n2| (n1 != n2) as Number);
-    res.insert(String::from("||"), |n1, n2| ((n1 != 0) || (n2 != 0)) as Number);
-    res.insert(String::from("&&"), |n1, n2| ((n1 != 0) && (n2 != 0)) as Number);
-    res
-}
-
-

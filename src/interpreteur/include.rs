@@ -5,7 +5,6 @@ pub use super::string_builder::StringBuilder;
 pub use std::collections::HashMap;
 pub type ConsumeResult = Result<(), String>;
 
-
 #[derive(Debug)]
 #[derive(PartialEq)]
 pub enum Type {
@@ -49,8 +48,8 @@ impl Value {
         }
     }
 
-    pub fn new_by_string(mut s: &mut StringBuilder, hash: bool) -> Value {
-        let val = if hash { (s.hash()/2).try_into().expect("Failed to convert the u32 hash to i32") } else { 0 };
+    pub fn new_by_string(s: &mut StringBuilder, hash: bool) -> Value {
+        let val = if hash { s.hash() } else { 0 };
         Value {
             number: val,
             string: s.extract()
@@ -106,6 +105,7 @@ impl Column {
     }
 
     pub fn set_default_value(&mut self, val: i64) {
+        println!("{val}");
         self.default_value = Some(Value::new_by_val(val))
     }
 
@@ -135,6 +135,10 @@ impl Column {
 
     pub fn disable_flag(&mut self) {
         self.flag = false
+    }
+
+    pub fn has_default_value(&self) -> bool {
+        self.default_value.is_some()
     }
 
     
@@ -213,6 +217,10 @@ impl Table {
     pub fn name(&self) -> &String {
        &self.name
     }
+
+    pub fn get_cols(&self) -> &HashMap<String, Column> {
+        &self.columns
+    }
 }
 
 
@@ -275,7 +283,7 @@ pub  trait Request {
 
     fn new() -> BoxedReq where Self: Sized;
 
-    fn end(&mut self, database: &mut Database);
+    fn end(&mut self, database: &mut Database) -> ConsumeResult;
     
     fn panic_bad_token(&self, token: Token, name: &str) {
         eprintln!("Tried to conusme an unexpected token in {name}: {type_token:?}: {content}", type_token=token.token_type, content=token.content);
