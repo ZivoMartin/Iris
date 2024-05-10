@@ -570,7 +570,7 @@ pub fn build_grammar_tree() -> HashMap<TokenType, Node> {
                             ),
                             vec!(),
                             vec!(",")
-                        )
+                        ).react(push_token).set_flag(Flag::Comma)
                     )
                 )
             ),

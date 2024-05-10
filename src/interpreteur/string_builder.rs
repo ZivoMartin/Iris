@@ -13,6 +13,12 @@ impl StringBuilder {
         } 
     }
 
+    pub fn from_string(s: String) -> StringBuilder {
+        StringBuilder {
+            string: Some(s)
+        } 
+    }
+
     fn string(&self) -> &String {
         self.string.as_ref().expect("StringBuilder: Failed to unwrap the string")
     }

@@ -24,13 +24,17 @@ impl Request for InsertReq {
         self.save_value(database)?;
         if self.values.len() != self.asked_cols.len() {
             return Err(format!("Error during the insertion of the table {}, the number of value is less than the number of columns.", self.table_name))
-        } 
-        for (_, c) in database.get_table(&self.table_name).get_cols().iter() {
+        }
+        let table = database.get_table_mut(&self.table_name);
+        for (_, c) in table.get_cols().iter() {
             if !c.has_default_value() && !c.flag() {
                 return Err(format!("Error during the insertion of the table {}, the column {} doesn't have a default value and you didn't indicate his value.", self.table_name, c.name()))
+            } else if !c.flag() {
+                self.asked_cols.push(c.name().clone());
+                self.values.push(c.default_value().clone())
             }
         }
-        
+        table.insert(&self.asked_cols, &self.values);
         database.get_table_mut(&self.table_name).reset_all_flags();
         self.table_name.clear();
         self.asked_cols.clear();

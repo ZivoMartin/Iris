@@ -5,7 +5,7 @@ use super::{
     requests::reset_req::ResetReq,
     requests::insert_req::InsertReq,
     requests::select_req::SelectReq,
-    requests::update_req::UpdateReq,
+    requests::set_req::SetReq,
     requests::delete_req::DeleteReq
 };
 
@@ -25,7 +25,7 @@ impl Interpreteur {
             request_treaters: Interpreteur::build_treaters(),
             keyword_link: Interpreteur::build_keyword_link(),
             current_treater: 0,
-            database: Database::new_empty(),
+            database: Database::load(),
             request_in_treatment: false
         }
     }
@@ -56,7 +56,7 @@ impl Interpreteur {
     }
     
     fn build_treaters() -> Vec<Box<dyn Request>> {
-        vec!(CreateReq::new(), DropReq::new(), ResetReq::new(), InsertReq::new(), SelectReq::new(), UpdateReq::new(), DeleteReq::new())
+        vec!(CreateReq::new(), DropReq::new(), ResetReq::new(), InsertReq::new(), SelectReq::new(), SetReq::new(), DeleteReq::new())
     }
 
     fn build_keyword_link() -> HashMap::<String, usize> {

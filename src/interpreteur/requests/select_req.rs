@@ -4,8 +4,8 @@ use super::from_where_req::FromWhereReq;
 pub struct SelectReq {
     table_name: String,
     asked_cols: Vec<String>,
-    nb_kw: u8,
-    from_where: Box<dyn Request>
+    redirect: bool,
+    from_where: FromWhereReq
 }
 
 impl Request for SelectReq {
@@ -14,51 +14,43 @@ impl Request for SelectReq {
         Box::from(SelectReq {
             table_name: String::new(),
             asked_cols: Vec::new(),
-            nb_kw: 0,
-            from_where: FromWhereReq::new()
+            redirect: false,
+            from_where: FromWhereReq::pure_new()
         })
     }
 
     fn end(&mut self, database: &mut Database) -> ConsumeResult {
+        if self.asked_cols.contains(&ALL_INDICATOR.to_string()) {
+            self.fill_asked_cols(database);
+        } else {
+            database.test_column_existance(self.from_where.table_name(), &self.asked_cols)?;
+        }
         self.from_where.end(database)?;
-        database.test_column_existance(&self.table_name, &self.asked_cols)?;
         self.table_name.clear();
         self.asked_cols.clear();
-        self.nb_kw = 0;
+        self.redirect = false;
         Ok(())
     }
     
     fn consume(&mut self, database: &mut Database, token: Token) -> ConsumeResult {
-        match token.token_type {
-            TokenType::Ident => self.new_ident(database, token),
-            TokenType::Keyword => self.new_keyword(database, token),
-            _ => self.from_where.consume(database, token)
+        if self.redirect {
+            self.from_where.consume(database, token)?;
+        } else {
+            match token.token_type {
+                TokenType::Ident | TokenType::Symbol => self.asked_cols.push(token.content),
+                TokenType::Keyword => self.redirect = true,
+                _ => self.panic_bad_token(token, "select")
+            }
         }
+        Ok(())
     }
     
 }
 
-
 impl SelectReq {
 
-    fn new_ident(&mut self, database: &mut Database, token: Token) -> ConsumeResult {
-        if self.nb_kw == 0 {
-            self.asked_cols.push(token.content);
-        } else if self.nb_kw == 1 {
-            self.table_name = token.content.clone();
-            self.from_where.consume(database, token)?;
-        } else {
-            self.from_where.consume(database, token)?;
-        }
-        Ok(())
+    fn fill_asked_cols(&mut self, database: &Database) {
+        self.asked_cols = database.get_table(self.from_where.table_name()).get_cols().keys().map(|c| c.clone()).collect::<_>();
     }
-
-    fn new_keyword(&mut self, database: &mut Database, token: Token) -> ConsumeResult {
-        if self.nb_kw != 0 {
-            self.from_where.consume(database, token)?;
-        }
-        self.nb_kw += 1;
-        Ok(())
-    }
-     
+    
 }

@@ -90,22 +90,6 @@ impl Token {
     pub fn empty(token_type: TokenType) -> Token {
         Token::new(token_type, String::new(), Flag::NoFlag)
     }
-
-    pub fn content(&self) -> &String {
-        &self.content
-    }
-
-    pub fn content_mut(&mut self) -> &mut String {
-        &mut self.content
-    }
-
-    pub fn flag(&self) -> Flag {
-        self.flag
-    }
-
-    pub fn token_type(&self) -> TokenType {
-        self.token_type
-    }
     
 }
 

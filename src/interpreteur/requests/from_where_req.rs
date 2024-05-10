@@ -11,12 +11,7 @@ pub struct FromWhereReq {
 impl Request for FromWhereReq {
 
     fn new() -> BoxedReq {
-        Box::from(FromWhereReq {
-            table_name: String::new(),
-            expr: ExpressionEvaluator::new(),
-            where_passed: false,
-            string_builder: StringBuilder::new()
-        })
+        Box::from(FromWhereReq::pure_new())
     }
 
     fn end(&mut self, database: &mut Database) -> ConsumeResult {
@@ -45,6 +40,15 @@ impl Request for FromWhereReq {
 
 
 impl FromWhereReq {
+
+    pub fn pure_new() -> FromWhereReq {
+        FromWhereReq {
+            table_name: String::new(),
+            expr: ExpressionEvaluator::new(),
+            where_passed: false,
+            string_builder: StringBuilder::new()
+        }
+    }
 
     fn new_ident(&mut self, name: String, database: &Database) -> ConsumeResult {
        if !self.where_passed {
@@ -81,4 +85,8 @@ impl FromWhereReq {
         self.string_builder.extract();
     }
 
+    pub fn table_name(&self) -> &String {
+        &self.table_name
+    } 
+    
 }

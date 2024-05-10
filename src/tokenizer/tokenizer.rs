@@ -307,15 +307,6 @@ impl<'a> Tokenizer {
 
     }
 
-    fn build_path(&self, relative_path: &str, current_file_path: &str) -> String {
-        if relative_path.starts_with('<') && relative_path.ends_with('>') {
-            String::from("/home/martin/Travail/Zilang/zipiler/stdlib/") + &relative_path[1..relative_path.len()-1] + ".zi"
-        }else{
-            let mut split: Vec<_> = current_file_path.split("/").collect();
-            split.pop();
-            split.join("/") + "/" + relative_path
-        }
-    }
 }
 
 

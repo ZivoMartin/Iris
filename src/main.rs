@@ -108,7 +108,7 @@ fn main() -> ExitCode{
                     }
                 }
             },
-            Err(e) => keep_compile = false
+            Err(_) => keep_compile = false
         };
     }
     println!("Everything is ok");

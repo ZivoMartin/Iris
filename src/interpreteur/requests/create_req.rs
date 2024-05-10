@@ -105,11 +105,11 @@ impl CreateReq {
         self.pkey_exists
     }
 
-    fn def_pkey(&mut self) -> ConsumeResult {
+    fn def_pkey(&mut self, p_key: String) -> ConsumeResult {
         if self.pkey_exists() {
             Err(format!("You defined a primary key twice for the table {}", self.table().name()))
         } else {
-            self.col_mut().set_as_p_key();
+            self.table_mut().set_pkey(p_key);
             self.pkey_exists = true;
             Ok(())
         }
@@ -117,7 +117,7 @@ impl CreateReq {
     
     fn new_keyword(&mut self, kw: String) -> ConsumeResult {
         match &kw as &str {
-            "PRIMARY" => self.def_pkey()?,
+            "PRIMARY" => self.def_pkey(self.col().name().clone())?,
             _ => panic!("Unknow keyword: {kw}")
         }
         Ok(())

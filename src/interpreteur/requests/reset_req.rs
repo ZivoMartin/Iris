@@ -13,7 +13,7 @@ impl Request for ResetReq {
         Ok(())
     }
     
-    fn consume(&mut self, database: &mut Database, token: Token) -> ConsumeResult {
+    fn consume(&mut self, _database: &mut Database, token: Token) -> ConsumeResult {
         match token.token_type {
             _ => self.panic_bad_token(token, "drop")
         }

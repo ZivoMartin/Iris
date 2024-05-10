@@ -5,6 +5,32 @@ pub use super::string_builder::StringBuilder;
 pub use std::collections::HashMap;
 pub type ConsumeResult = Result<(), String>;
 
+use std::fs::{
+    File,
+    OpenOptions,
+    remove_file
+};
+use std::io::{
+    Write,
+    Seek,
+    Read
+};
+
+use std::path::Path;
+
+use std::fmt;
+
+use serde_json::{
+    json,
+    Value as JsonValue,
+    Map,
+    Number
+};
+
+
+
+pub static ALL_INDICATOR: &str = "*";
+
 #[derive(Debug)]
 #[derive(PartialEq)]
 pub enum Type {
@@ -20,8 +46,14 @@ impl Clone for Type {
     fn clone(&self) -> Type {
         *self
     }
-    
 }
+
+impl fmt::Display for Type {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", format!("{:?}", self).to_uppercase())
+    }
+}
+
 
 pub fn from_string_to_type(s: String) -> Type {
     match &s as &str {
@@ -34,11 +66,14 @@ pub fn from_string_to_type(s: String) -> Type {
 }
 
 #[derive(Debug)]
+#[allow(dead_code)]
+#[derive(Clone)]
 pub struct Value {
     number: i64,
     string: String
 }
 
+#[allow(dead_code)]
 impl Value {
 
     pub fn new_by_val(val: i64) -> Value {
@@ -56,6 +91,10 @@ impl Value {
         }
     }
 
+    pub fn new_by_pure_string(s: String, hash: bool) -> Value {
+        Value::new_by_string(&mut StringBuilder::from_string(s), hash)
+    }
+
     fn val(&self) -> i64 {
         self.number
     }
@@ -70,13 +109,25 @@ impl Value {
     
 }
 
+fn extract_string_from_json(json_value: &JsonValue) -> String {
+     match json_value {
+         JsonValue::String(string) => string.to_string(),
+         _ => panic!("Failed to catch a string for the column name")
+     }
+}
+
+fn extract_vec_from_json(json_value: &JsonValue) -> Vec::<JsonValue> {
+     match json_value {
+         JsonValue::Array(arr) => arr.clone(),
+         _ => panic!("Failed to catch a string for the column name")
+     }
+}
+
 #[derive(Debug)]
 pub struct Column {
     name: String,
     type_col: Type,
-    is_p_key: bool,
     default_value: Option<Value>,
-
     flag: bool
 }
 
@@ -86,12 +137,28 @@ impl Column {
         Column {
             name: String::new(),
             type_col: Type::Int,
-            is_p_key: false,
             default_value: None,
             flag: false
         }
     }
 
+    fn load(json_data: &JsonValue) -> Column {
+        let mut column = Column::new_empty();
+        column.set_name(extract_string_from_json(&json_data["name"]));
+        column.set_type(from_string_to_type(extract_string_from_json(&json_data["type_col"])));
+        column.load_default_value(extract_string_from_json(&json_data["default_value"]));
+        column
+    }
+
+    fn load_default_value(&mut self, default_value: String) {
+        if !default_value.is_empty() {
+            match self.type_col {
+                Type::String => self.default_value = Some(Value::new_by_pure_string(default_value, true)),
+                _ => self.set_default_value(default_value.parse::<i64>().expect("Failed to parse the default value."))
+            }
+        }
+    }
+    
     pub fn set_type(&mut self, t: Type) {
         self.type_col = t
     }
@@ -100,12 +167,7 @@ impl Column {
         self.name = name
     }
 
-    pub fn set_as_p_key(&mut self) {
-        self.is_p_key = true;
-    }
-
     pub fn set_default_value(&mut self, val: i64) {
-        println!("{val}");
         self.default_value = Some(Value::new_by_val(val))
     }
 
@@ -137,30 +199,112 @@ impl Column {
         self.flag = false
     }
 
+    pub fn default_value(&self) -> &Value {
+        self.default_value.as_ref().expect(&format!("The column {} doesn't have a default value.", self.name()))
+    }
+    
     pub fn has_default_value(&self) -> bool {
         self.default_value.is_some()
     }
 
+    fn get_datas(&self) -> JsonValue {
+        json!({
+            "name": self.name(),
+            "type_col": self.type_col.to_string(),
+            "default_value": if self.default_value.is_some() { self.default_value.as_ref().unwrap().string() } else { "" }
+        })
+    }
+
     
+}
+
+fn open_file(file_path: &str) -> File {
+    OpenOptions::new()
+        .append(true)
+        .read(true)
+        .open(file_path)
+        .expect(&format!("failed to open the file {}", file_path))
 }
 
 #[derive(Debug)]
 pub struct Table {
     name: String,
-    columns: HashMap<String, Column>
+    columns: HashMap<String, Column>,
+    p_key: String,
+    table_file: Option<File>,
+    lines: Vec<JsonValue>
 }
 
 impl Table {
     
 
-    /// Créer un nouvelle table et la renvoie sans la charger dans la database.
+    /// Créer une nouvelle table et la renvoie sans la charger dans la database.
     pub fn new() -> Table {
         Table {
             name: String::new(),
-            columns: HashMap::new()
+            columns: HashMap::new(),
+            p_key: String::new(),
+            table_file: None,
+            lines: Vec::new()
         }
     }
 
+    fn load(json_data: &JsonValue) -> Table {
+        let mut table = Table::new();
+        table.set_name(extract_string_from_json(&json_data["name"]));
+        table.set_pkey(extract_string_from_json(&json_data["p_key"]));
+        match &json_data["columns"] {
+            JsonValue::Array(columns) =>  {
+                for c in columns {
+                    table.add_column(Column::load(c));
+                }
+            },
+            _ => panic!("Failed to catch the columns as an array")
+        }
+        table
+    }
+
+    pub fn save(&mut self) {
+        let path = self.get_table_file_path();
+        File::create(Path::new(&path)).expect(&format!("Failed to create the file of the table {}", self.name()));
+        self.table_file = Some(open_file(&path));
+        self.table_file().write_all("[]".as_bytes()).expect("Failed to write");
+        self.lines = Vec::new();
+    }
+
+    pub fn drop(&mut self) {
+        remove_file(&self.get_table_file_path()).expect(&format!("Failed to remove the file of the table {}", self.name))
+    }
+
+    pub fn insert(&mut self, asked_cols: &Vec<String>, values: &Vec<Value>) {
+        let mut map = Map::<String, JsonValue>::new();
+        for (col, val) in asked_cols.iter().zip(values.iter()) {
+            map.insert(col.clone(), if self.get_column(col).get_type() == Type::String { JsonValue::String(val.string().clone()) } else { JsonValue::Number(Number::from(val.val())) });
+        }
+        self.lines.push(JsonValue::Object(map));
+        self.actualise_table_file();
+    }
+
+    fn actualise_table_file(&mut self) {
+        let lines = self.lines.clone();
+        self.table_file().set_len(0).expect("Failed to reset the data file len");
+        self.table_file()
+            .write_all(JsonValue::Array(lines).to_string().trim().as_bytes())
+            .expect("write failed");
+    }
+    
+    pub fn get_table_file_path(&self) -> String {
+        "database/".to_string() + self.name()
+    }
+
+    pub fn table_file(&mut self) -> &mut File {
+        self.table_file.as_mut().expect(&format!("Failed to unwrap the file of the table {}", self.name))
+    }
+    
+    pub fn set_pkey(&mut self, p_key: String) {
+        self.p_key = p_key;
+    }
+    
     /// Set the name of the table
     pub fn set_name(&mut self, name: String) {
         self.name = name
@@ -168,11 +312,6 @@ impl Table {
 
     pub fn has_name(&self) -> bool {
         !self.name().is_empty()
-    }
-    
-    /// Load the table from the database and return it
-    pub fn load_table() -> Table {
-        todo!("Load the table from the database");
     }
 
     /// Add a column in the given table
@@ -221,31 +360,100 @@ impl Table {
     pub fn get_cols(&self) -> &HashMap<String, Column> {
         &self.columns
     }
+
+    pub fn p_key(&self) -> &String {
+        &self.p_key
+    }
+    
+    fn get_datas(&self) -> JsonValue {
+        json!({
+            "name": self.name(),
+            "p_key": self.p_key(),
+            "columns": self.columns.iter().map(|(_, c)| {
+                c.get_datas()
+            }).collect::<Vec<_>>()
+        })
+    }
 }
 
 
 pub struct Database {
-    tables: HashMap<String, Table>
+    tables: HashMap<String, Table>,
+    data_file: File,
+    json_table_data: Vec<JsonValue>
 }
 
+static DATA_PATH: &str = "database/tables.json";
 
 impl Database {
 
     pub fn new_empty() -> Database {
         Database {
-            tables: HashMap::new()
+            tables: HashMap::new(),
+            data_file: Database::load_data_file(),
+            json_table_data: Vec::new()
         }
     }
 
+    fn load_data_file() -> File {
+        let mut create = false;
+        let path = Path::new(DATA_PATH);
+        if !path.exists() {
+            create = true;
+            File::create(path).expect("Failed to create the data file");
+        }
+        let mut file = open_file(DATA_PATH);
+        if create {
+            file.write_all("[]".as_bytes()).expect("write failed");
+        }
+        file
+    }
+
+    
     /// Load the database (only the tables data not each lines..) and return it
     pub fn load() -> Database {
-        todo!()
+        let mut res = Database::new_empty();
+        res.load_table_vec_from_file();
+        let mut map = HashMap::new();
+        for table in res.json_table_data.iter() {
+            let table = Table::load(table); 
+            map.insert(table.name().clone(), table);
+        }
+        res.tables = map;
+        res
+    }
+
+
+    fn load_table_vec_from_file(&mut self)  {
+        let data_file_content = self.get_data_file_content();
+        let datas: JsonValue = serde_json::from_str(if data_file_content.is_empty() { "[]" } else  { &data_file_content }).expect("Failed to extract json data file.");
+        self.json_table_data = extract_vec_from_json(&datas);
+    }
+    
+    fn get_data_file_content(&mut self) -> String {
+        self.data_file.seek(std::io::SeekFrom::Start(0)).expect("Failed to seek during the reading of data file");
+        let mut result = String::new();
+        self.data_file.read_to_string(&mut result).expect("Failed to read the data file");
+        result
     }
     
     /// Add a table in the database, in the database of the program and in the one of the system
-    pub fn add_table(&mut self, table: Table) {
+    pub fn add_table(&mut self, mut table: Table) {
+        table.save();
+        self.json_table_data.push(table.get_datas());
+        self.actualise_data_file();
+        self.insert_table(table);
+    }
+
+    fn actualise_data_file(&mut self) {
+        self.data_file.set_len(0).expect("Failed to reset the data file len");
+        self.data_file
+            .write_all(JsonValue::Array(self.json_table_data.clone()).to_string().trim().as_bytes())
+            .expect("write failed");
+    }
+
+    fn insert_table(&mut self, table: Table) {
         self.tables.insert(table.name().clone(), table);
-        // TODO: Save the table in the database
     }
 
     /// Indicate if the given table exists
@@ -256,13 +464,23 @@ impl Database {
 
     /// Delete the table in the database of the program and in the one of the system
     pub fn delete_table(&mut self, name: &String) {
+        self.tables.get_mut(name).expect(&format!("Drop error: The table {} doesn't exists", name)).drop();
         self.tables.remove(name);
-        // TODO: Supprimer la table du système
+        let mut i = 0;
+        for t in self.json_table_data.iter() {
+            if extract_string_from_json(&t["name"]) == *name {
+                break;
+            }
+            i += 1;
+        }
+        self.json_table_data.remove(i);
+        self.actualise_data_file();
     }
 
     pub fn reset_database(&mut self) {
         self.tables.clear();
-        // TODO: Supprimer toutes les tables du system
+        self.data_file.set_len(0).expect("failed to reset the data file");
+        self.load_table_vec_from_file();
     }
 
     pub fn get_table(&self, name: &String) -> &Table {
