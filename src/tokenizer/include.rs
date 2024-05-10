@@ -16,7 +16,7 @@ pub enum TokenType {
     Character,  // The difference between a symbol and a character is the symbol ignore garbage, the char not.
     Operator,
     Keyword,
-
+    
     // Group Token
     Request,
     CreateReq,

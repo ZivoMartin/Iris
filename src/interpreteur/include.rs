@@ -272,6 +272,17 @@ impl Database {
     pub fn get_table_mut(&mut self, name: &String) -> &mut Table {
         self.tables.get_mut(name).expect(&format!("ERROR: The table {name} doesn't exists."))
     }
+
+    
+    pub fn test_column_existance(&self, table_name: &String, cols: &Vec<String>) -> ConsumeResult {
+        let table = self.get_table(&table_name);
+        for c in cols.iter() {
+            if !table.column_exists(c) {
+                return Err(format!("Error during the selection on {}: the column {} doesn't exists.", table_name, c))
+            }
+        }
+        Ok(())
+    }
     
 }
 

@@ -4,7 +4,9 @@ use super::{
     requests::drop_req::DropReq,
     requests::reset_req::ResetReq,
     requests::insert_req::InsertReq,
-    requests::select_req::SelectReq
+    requests::select_req::SelectReq,
+    requests::update_req::UpdateReq,
+    requests::delete_req::DeleteReq
 };
 
 
@@ -54,12 +56,12 @@ impl Interpreteur {
     }
     
     fn build_treaters() -> Vec<Box<dyn Request>> {
-        vec!(CreateReq::new(), DropReq::new(), ResetReq::new(), InsertReq::new(), SelectReq::new())
+        vec!(CreateReq::new(), DropReq::new(), ResetReq::new(), InsertReq::new(), SelectReq::new(), UpdateReq::new(), DeleteReq::new())
     }
 
     fn build_keyword_link() -> HashMap::<String, usize> {
         let mut res = HashMap::<String, usize>::new();
-        for (i, kw) in Vec::from(["CREATE", "DROP", "RESET", "INSERT", "SELECT"]).iter().enumerate() {
+        for (i, kw) in Vec::from(["CREATE", "DROP", "RESET", "INSERT", "SELECT", "SET", "DELETE"]).iter().enumerate() {
             res.insert(String::from(*kw), i);
         }
         res

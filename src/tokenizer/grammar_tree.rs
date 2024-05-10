@@ -538,35 +538,17 @@ pub fn build_grammar_tree() -> HashMap<TokenType, Node> {
             vec!(
                 Node::new_c(
                     TokenType::Keyword,
-                    vec!(),
                     vec!(
                         Node::new(
-                            TokenType::Ident,
-                            vec!(),
+                            TokenType::SerieAffectation,
                             vec!(
-                                Node::new_c(
-                                    TokenType::Keyword,
-                                    vec!(
-                                        Node::new(
-                                            TokenType::SerieAffectation,
-                                            vec!(),
-                                            vec!(
-                                                Node::new_c(
-                                                    TokenType::Keyword,
-                                                    vec!(Node::comma_leaf(TokenType::Expression)),
-                                                    vec!(),
-                                                    vec!("WHERE")
-                                                )
-                                            )
-                                        )
-                                    ),
-                                    vec!(),
-                                    vec!("SET")
-                                )
-                            )
-                        ).react(push_token)
+                                Node::leaf(TokenType::FromWhereReq)
+                            ),
+                            vec!()
+                        )
                     ),
-                    vec!("UPDATE")
+                    vec!(),
+                    vec!("SET")
                 ).react(push_token)
             )
         )
