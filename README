@@ -1,0 +1,22 @@
+# Iris
+
+Iris is a fast, simple and lightweight database engine built in rust. Iris is not compatible with all the language yet, only c++ and of course Rust. 
+
+## Installation
+
+Iris is a personal project that i use in my own project so if you want to give it a try you need to have cargo and rustc downloaded on your machin. Then clone the entire iris source code and and submit some SQL request.
+
+## Usage
+
+You can use Iris in Rust and C++, 
+
+## Contributing
+
+Pull requests are welcome. For major changes, please open an issue first
+to discuss what you would like to change.
+
+Please make sure to update tests as appropriate.
+
+## License
+
+[MIT](https://choosealicense.com/licenses/mit/)

@@ -72,6 +72,12 @@ pub static DEFAULT_GARBAGE_CHARACTER: &[char; 3] = &[' ', '\n', '\t'];
 static PRIMITIVE_TOKENTYPE: &[TokenType; 6] = &[TokenType::Ident, TokenType::Type, TokenType::Symbol, TokenType::Number, TokenType::Operator, TokenType::Keyword];
 pub static FAIL_MESSAGE: &str = "Syntax error";
 
+pub enum TokenizerMessage {
+
+    Token(Token),
+    Tokenizer(Tokenizer)
+    
+}
 
 
 #[derive(Debug)]

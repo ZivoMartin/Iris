@@ -11,7 +11,7 @@ use std::sync::mpsc::Sender;
 static COM_CHAR: char = '#';
 
 pub struct Tokenizer {
-    sender: Sender<Token>,                                     // The thread asking the tokenization
+    sender: Sender<TokenizerMessage>,                          // The thread asking the tokenization
     group_map: HashMap<TokenType, Node>,                       // Associate a token group to his node in the grammar tree
     priority_map: HashMap<TokenType, u8>,                      // Associate a primotive tokentype to his prority (keyword has a greater priority than an identificator)
     identity_map: HashMap<fn(char)->bool, Vec<TokenType>>      // Associate a function who recognize the signification of a char to the possible token type which could be built by this char 
@@ -66,7 +66,7 @@ fn compute_next_query(chars: &mut Peekable<Chars>) -> Result<String, String> {
 
 impl<'a> Tokenizer {
 
-    pub fn new(sender: Sender<Token>) -> Tokenizer {
+    pub fn new(sender: Sender<TokenizerMessage>) -> Tokenizer {
         Tokenizer{
             sender,
             group_map: build_grammar_tree(),
@@ -75,8 +75,8 @@ impl<'a> Tokenizer {
         }
     }
 
-    pub fn tokenize_file(&mut self, path: &str) {
-        let mut file = File::open(path).expect(&format!("File {} doesn't exists", path));
+    pub fn tokenize_file(mut self, path: String) {
+        let mut file = File::open(&path).expect(&format!("File {} doesn't exists", path));
         let mut file_content = String::new();
         file.read_to_string(&mut file_content).unwrap();
         match self.precompile(file_content, &path) {
@@ -84,16 +84,27 @@ impl<'a> Tokenizer {
                 let mut chars = s.chars().peekable();
                 while chars.peek().is_some() {
                     let query = compute_next_query(&mut chars);
-                    if query.is_err() || self.tokenize_query(&query.unwrap()).is_err() {
+                    if query.is_err() || self.tokenize_one_query(query.unwrap()).is_err() {
                         break;
                     }
                 }
             }
-            Err(e) => push_token(self, TokenType::ERROR, &e, Flag::NoFlag)
+            Err(e) => push_token(&self, TokenType::ERROR, &e, Flag::NoFlag)
         }
+        self.end()
     }
 
-    pub fn tokenize_query(&mut self, query: &str) -> Result<(), ()>{
+    pub fn tokenize_query(mut self, query: String) {
+        let _ = self.tokenize_one_query(query);
+        self.end()
+    }
+
+    fn end(self) {
+        let sender = self.sender.clone();
+        sender.send(TokenizerMessage::Tokenizer(self)).expect("Failed to send the tokenizer to main thread")
+    }
+    
+    fn tokenize_one_query(&mut self, query: String) -> Result<(), ()>{
         let first_node = self.group_map.get(&TokenType::Request).unwrap();
         let mut chars = query.chars().peekable();
         self.skip_garbage(&mut chars);
@@ -171,8 +182,11 @@ impl<'a> Tokenizer {
             if cond_stop(*c) {
                 if self.clean_son_vec(path_vec, author_type) {
                     self.next_char_while(&mut current_token, chars, *cond_stop);
-                    if *cond_stop == is_letter as fn(char)->bool && is_number(*chars.peek().unwrap()) && self.clean_son_vec(path_vec, &vec!(TokenType::Ident)) {  // If we are looking for an ident
-                        self.next_char_while(&mut current_token, chars, |c: char| {is_letter(c) || is_number(c)});
+                    if chars.peek().is_some()
+                        && *cond_stop == is_letter as fn(char)->bool
+                        && is_number(*chars.peek().unwrap())
+                        && self.clean_son_vec(path_vec, &vec!(TokenType::Ident)) {  // If we are looking for an ident
+                            self.next_char_while(&mut current_token, chars, |c: char| {is_letter(c) || is_number(c)});
                     }
                     return Ok(current_token)
                 }else{
@@ -311,7 +325,7 @@ impl<'a> Tokenizer {
 
 
 pub fn push_token(tk: &Tokenizer, token_type: TokenType, content: &String, flag: Flag) {
-    tk.sender.send(Token::new(token_type, content.clone(), flag)).expect("Error while sending new token");
+    tk.sender.send(TokenizerMessage::Token(Token::new(token_type, content.clone(), flag))).expect("Error while sending new token");
 }
 
 pub fn end_request(tk: &Tokenizer, _token_type: TokenType, _content: &String, _flag: Flag) {

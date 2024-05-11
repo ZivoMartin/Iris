@@ -1,118 +1,178 @@
 mod tokenizer;
 mod interpreteur;
 use interpreteur::interpreteur::Interpreteur;
-use std::process::{exit, ExitCode};
+use std::process::exit;
 use std::env;
 use std::thread::spawn;
-use tokenizer::{include::{Token, TokenType}, tokenizer::Tokenizer};
+use tokenizer::{include::{TokenType, TokenizerMessage}, tokenizer::Tokenizer};
 use std::sync::mpsc::channel;
+use std::sync::mpsc::Receiver;
+use std::fs::{
+    File,
+    OpenOptions
+};
+use std::io::Read;
 
-static OK: u8 = 0;
-static ERROR: u8 = 1;
+trait RequestParameter {
 
-
-struct RequestParameters {
-    request: String,
-    json_file: String,
-    pretty: bool,
-    file_sql: String,
-    ide: bool
+    fn execute(&mut self, tokenizer: Tokenizer, interp: &mut Interpreteur, receiver: &Receiver<TokenizerMessage>) -> Tokenizer;
+    
 }
 
-impl RequestParameters {
-    fn new() -> RequestParameters {
-        RequestParameters{
-            request: String::new(),
-            pretty: false,
-            json_file: String::new(),
-            file_sql: String::new(),
-            ide: false
+struct OneQuery {
+    query: String
+}
+
+impl OneQuery {
+
+    fn new(query: String) -> Box<dyn RequestParameter> {
+        Box::from(OneQuery { query })
+    }
+       
+}
+
+impl RequestParameter for OneQuery {
+
+    fn execute(&mut self, tokenizer: Tokenizer, interp: &mut Interpreteur, receiver: &Receiver<TokenizerMessage>) -> Tokenizer {
+        let query = self.query.clone();
+        spawn(move ||
+              tokenizer.tokenize_query(query)
+        );
+        match execute(interp, receiver) {
+            Ok(tokenizer) => {
+                println!("The execution of the query {} has been a success.", self.query);
+                return tokenizer
+            }
+            Err(e) => error_catched(&e)
+        }
+        panic!("Impossible case");
+    }
+}
+
+
+struct OneFile {
+    path: String
+}
+
+impl OneFile {
+
+    fn new(path: String) -> Box<dyn RequestParameter> {
+        Box::from(OneFile { path })
+    }
+    
+}
+
+impl RequestParameter for OneFile {
+
+    fn execute(&mut self, tokenizer: Tokenizer, interp: &mut Interpreteur, receiver: &Receiver<TokenizerMessage>) -> Tokenizer {
+        let path = self.path.clone();
+        spawn(move ||
+              tokenizer.tokenize_file(path)
+        );
+        match execute(interp, receiver) {
+            Ok(tokenizer) => {
+                println!("The execution of the file {} has been a success.", self.path);
+                return tokenizer;
+            }
+            Err(e) => error_catched(&e)
+        };
+        panic!("Impossible case");
+    }
+}
+
+static ENTRY_FILE: &str = "entry_file.sql";
+
+struct Run {
+    entry_file: File
+}
+
+impl Run {
+    fn new() -> Box<dyn RequestParameter> {
+        Box::from(Run {
+            entry_file: OpenOptions::new().read(true).open(ENTRY_FILE.to_string()).expect("Failed to open entry file from runner")
+        })
+    }
+
+    fn new_request(&mut self) -> bool {
+        let mut content = String::new();
+        self.entry_file.read_to_string(&mut content).expect("Failed to read the content of the entry file");
+        !content.is_empty()
+    }
+}
+
+impl RequestParameter for Run {
+
+    fn execute(&mut self, mut tokenizer: Tokenizer, interp: &mut Interpreteur, receiver: &Receiver<TokenizerMessage>) -> Tokenizer {
+        let mut executer = OneFile::new(ENTRY_FILE.to_string());
+        loop {
+            if self.new_request() {
+                tokenizer = executer.execute(tokenizer, interp, receiver)
+            }
         }
     }
 }
 
+
+
+
 /// Parameters:
-///     -ide: Start the Iris ide
 ///     -j $file_name.json : export the result in the file_name.json file
 ///     -d "SQL REQUEST" : performs the query
 ///     -f $file_name.sql : execute the content of the .sql file.
-fn main() -> ExitCode{
-    let args: Vec<String> = env::args().collect();
-    let mut req = RequestParameters::new();
-    let mut iter = args.iter().skip(1);
+///     -run: Continue to run and consume all the request in the requests file
+fn main() {
+    let mut args: Vec<String> = env::args().collect();
+    let mut actions = Vec::<Box<dyn RequestParameter>>::new();
+    let mut iter = args.iter_mut().skip(1);
     while let Some(elt) = iter.next() {
         match &elt as &str {
-            "-j" => {
-                if let Some(path) = iter.next() {
-                    req.json_file = path.to_string();
-                }else{
-                    eprintln!("COMMAND LINE ERROR: You didn't precise the file path with the '-f' parameter.");
-                    return ExitCode::from(ERROR)
-                }
-            }
-            "-ide" => req.ide = true,
+            "-j" => todo!("Enregistrer le fichier de sortie"),
+            "-run" => actions.push(Run::new()),
             "-f" => {
-                if let Some(path) = iter.next() {
-                    req.file_sql = path.to_string();
+                let mut path = iter.next();
+                if path.is_some() {
+                    actions.push(OneFile::new(path.take().unwrap().to_string()))
                 }else{
-                    eprintln!("COMMAND LINE ERROR: You didn't precise the file path with the '-f' parameter.");
-                    return ExitCode::from(ERROR)
+                    error_catched("You didn't precise the file path with the '-f' parameter.");
                 }
             }
             "-d" => {
-                if let Some(request) = iter.next() {
-                   req.request = request.to_string()
+                let mut query = iter.next();
+                if query.is_some() {
+                   actions.push(OneQuery::new(query.take().unwrap().to_string()))
+                } else {
+                    error_catched("You didn't precise the query with the '-d' parameter.");
                 }
             }
-            "-p" => req.pretty = true,
-            _ => {
-                eprintln!("COMMAND LINE ERROR: Unknow parameter: {}", elt);
-                return ExitCode::from(ERROR)
-            }
+            _ => error_catched(&format!("Unknow parameter: {}", elt))
         }
     }
-
-    let (sender, receiver) = channel::<Token>();
-    let mut tokenizer = Tokenizer::new(sender);
-    if !req.request.is_empty() && !req.file_sql.is_empty() {
-        eprintln!("COMMAND LINE ERROR: You cannot at the same time load a file and a query, do it in two separate steps.");
-        exit(1);
-    }
-    let mut keep_compile = false;
-    if !req.request.is_empty() {
-        spawn(move ||
-              tokenizer.tokenize_query(&req.request)
-        );
-        keep_compile = true;
-    } else if !req.file_sql.is_empty() {
-        spawn(move ||
-              tokenizer.tokenize_file(&req.file_sql)
-        );
-        keep_compile = true;
-    }
-   
+    let (sender, receiver) = channel::<TokenizerMessage>();
     let mut interp = Interpreteur::new();
-    while keep_compile {
-        match receiver.recv(){
-            Ok(token) => {
-                if token.token_type == TokenType::ERROR {
-                    println!("ERROR: {}", token.content);
-                    keep_compile = false;
-                } else {
-                    match interp.new_token(token) {
-                        Ok(()) => (),
-                        Err(e) => {
-                            println!("ERROR: {e}");
-                            exit(1);
-                        }
-                    }
-                }
-            },
-            Err(_) => keep_compile = false
-        };
+    let mut tokenizer = Tokenizer::new(sender);
+    for act in actions.iter_mut() {
+        tokenizer = act.execute(tokenizer, &mut interp, &receiver);
     }
-    println!("Everything is ok");
-    ExitCode::from(OK)
 }
 
 
+fn execute(interp: &mut Interpreteur, receiver: &Receiver<TokenizerMessage>) -> Result<Tokenizer, String> {
+    let mut tokenizer: Option<Tokenizer> = None;
+    while tokenizer.is_none() {
+        match receiver.recv().expect("Something went wrong") {
+            TokenizerMessage::Token(token) =>
+                if token.token_type == TokenType::ERROR {
+                    return Err(token.content)
+                } else if let Err(e) = interp.new_token(token) {
+                    return Err(e)
+                }
+            TokenizerMessage::Tokenizer(the_tokenizer) => tokenizer = Some(the_tokenizer)
+        }
+    }
+    Ok(tokenizer.take().expect("Failed to catch the tokenizer throught the threads."))
+}
+
+fn error_catched(err: &str) {
+    println!("{err}");
+    exit(1)
+}

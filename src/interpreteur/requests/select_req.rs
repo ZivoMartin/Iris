@@ -33,7 +33,6 @@ impl Request for SelectReq {
         self.table_name.clear();
         self.asked_cols.clear();
         self.redirect = false;
-        println!("{:?}", self.result);
         self.result.clear();
         Ok(())
     }
