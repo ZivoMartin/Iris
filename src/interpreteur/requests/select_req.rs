@@ -20,6 +20,8 @@ impl Request for SelectReq {
     }
 
     fn end(&mut self, database: &mut Database) -> ConsumeResult {
+        self.from_where.push_last_string();
+        database.get_table_mut(self.from_where.table_name()).browse(self);
         if self.asked_cols.contains(&ALL_INDICATOR.to_string()) {
             self.fill_asked_cols(database);
         } else {
@@ -51,6 +53,18 @@ impl SelectReq {
 
     fn fill_asked_cols(&mut self, database: &Database) {
         self.asked_cols = database.get_table(self.from_where.table_name()).get_cols().keys().map(|c| c.clone()).collect::<_>();
+    }
+    
+}
+
+impl BrowserReq for SelectReq {
+
+    fn browse_action(&mut self) {
+        println!("Select");
+    }
+
+    fn get_expr(&mut self) -> &mut ExpressionEvaluator {
+        self.from_where.get_where_expr()
     }
     
 }

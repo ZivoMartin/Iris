@@ -5,7 +5,7 @@ INSERT INTO Humain (id, the_name, age) VALUES (2, 'Martin', 19);
 INSERT INTO Humain (id, the_name, age) VALUES (3, 'Raghid', 17);
 INSERT INTO Humain (id, the_name, age) VALUES (2, 'Dabi', 18);
 INSERT INTO Humain (id, the_name, age) VALUES (5, 'Vico', 18);
-SELECT age, the_name FROM Humain WHERE age==1;
+SELECT age, the_name FROM Humain WHERE age!=17;
 SET age=20 FROM Humain WHERE the_name == 'Joah';
 SELECT * FROM Humain WHERE age>18;
 DELETE FROM Humain WHERE age == 17; 

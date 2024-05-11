@@ -1,5 +1,6 @@
 use super::stack::Stack;
 use std::collections::HashMap;
+use super::include::{JsonValue, Value, Map};
 
 type Number = i64;
 type Operation = fn(Number, Number) -> Number;
@@ -9,13 +10,13 @@ pub struct ExpressionEvaluator {
     pf_exp: Vec<ExpTokenType>,
     operator_priority: HashMap<String, u8>,
     op_map: HashMap<String, Operation>,
-    fields: Vec<String>
 }
 
+#[derive(Debug)]
 enum ExpTokenType {
     Operator(Operation),
     Number(Number),
-    Field
+    Field(String)
 }
 
 impl ExpressionEvaluator {
@@ -26,7 +27,6 @@ impl ExpressionEvaluator {
             pf_exp: Vec::new(),
             operator_priority: ExpressionEvaluator::build_prio_map(),
             op_map: ExpressionEvaluator::build_op_map(),
-            fields: Vec::new()
         }
     }
 
@@ -61,8 +61,7 @@ impl ExpressionEvaluator {
 
 
     pub fn new_field(&mut self, field_name: String) {
-        self.pf_exp.push(ExpTokenType::Field);
-        self.fields.push(field_name)
+        self.pf_exp.push(ExpTokenType::Field(field_name));
     }
 
     /// ( -> Push it on the op stack
@@ -92,7 +91,7 @@ impl ExpressionEvaluator {
     }
 
 
-    pub fn compute(&mut self, mut fields: Vec<Number>, clear: bool) -> Number {
+    pub fn compute(&mut self, mut fields: Map<String, JsonValue>, clear: bool) -> Number {
         while !self.op_stack.is_empty() {
             self.push_op_val();
         }
@@ -101,12 +100,11 @@ impl ExpressionEvaluator {
             match t {
                 ExpTokenType::Operator(operation) => self.op_found(&mut number_stack, *operation),
                 ExpTokenType::Number(number) => self.number_found(&mut number_stack, *number),
-                ExpTokenType::Field => self.number_found(&mut number_stack, fields.pop().expect("Not enough field data."))
+                ExpTokenType::Field(field) => self.number_found(&mut number_stack, Value::from_json(&fields[field]).val())
             }
         }
         if clear {
             self.pf_exp.clear();
-            self.fields.clear();
         }
         number_stack.pop().unwrap()
     }
@@ -119,10 +117,6 @@ impl ExpressionEvaluator {
 
     fn number_found(&self, number_stack: &mut Stack<Number>, number: Number) {
         number_stack.push(number)
-    }
-
-    pub fn fields(&self) -> &Vec<String> {
-        &self.fields
     }
 
     

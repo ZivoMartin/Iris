@@ -20,7 +20,7 @@ use std::path::Path;
 
 use std::fmt;
 
-use serde_json::{
+pub use serde_json::{
     json,
     Value as JsonValue,
     Map,
@@ -91,19 +91,27 @@ impl Value {
         }
     }
 
+    pub fn from_json(data: &JsonValue) -> Value {
+        match data {
+            JsonValue::String(string) => Value::new_by_pure_string(string.clone(), true),
+            JsonValue::Number(number) => Value::new_by_val(number.as_i64().expect("Failed to convert the serde_json Number to i64")),
+            _ => panic!("Unexpected serde_json value for a column: {data:?}")
+        }
+    }
+
     pub fn new_by_pure_string(s: String, hash: bool) -> Value {
         Value::new_by_string(&mut StringBuilder::from_string(s), hash)
     }
 
-    fn val(&self) -> i64 {
+    pub fn val(&self) -> i64 {
         self.number
     }
 
-    fn string(&self) -> &String {
+    pub fn string(&self) -> &String {
         &self.string
     }
 
-    fn string_mut(&mut self) -> &mut String {
+    pub fn string_mut(&mut self) -> &mut String {
         &mut self.string
     }
     
@@ -119,7 +127,14 @@ fn extract_string_from_json(json_value: &JsonValue) -> String {
 fn extract_vec_from_json(json_value: &JsonValue) -> Vec::<JsonValue> {
      match json_value {
          JsonValue::Array(arr) => arr.clone(),
-         _ => panic!("Failed to catch a string for the column name")
+         _ => panic!("Failed to catch a vector for the column name")
+     }
+}
+
+fn extract_map_from_json(json_value: &JsonValue) -> Map::<String, JsonValue> {
+     match json_value {
+         JsonValue::Object(map) => map.clone(),
+         _ => panic!("Failed to catch a vector for the column name")
      }
 }
 
@@ -215,7 +230,7 @@ impl Column {
         })
     }
 
-    
+  
 }
 
 fn open_file(file_path: &str) -> File {
@@ -374,6 +389,15 @@ impl Table {
             }).collect::<Vec<_>>()
         })
     }
+
+    pub fn browse(&mut self, browser: &mut dyn BrowserReq) {
+        for line in self.lines.iter() {
+            if browser.get_expr().compute(extract_map_from_json(line), false) != 0 {
+                browser.browse_action();
+                println!("{line:?}");
+            }
+        }
+    }
 }
 
 
@@ -518,5 +542,13 @@ pub  trait Request {
         eprintln!("Tried to conusme an unexpected token in {name}: {type_token:?}: {content}", type_token=token.token_type, content=token.content);
         exit(1);
     }
+    
+}
+
+pub trait BrowserReq {
+
+    fn browse_action(&mut self);
+
+    fn get_expr(&mut self) -> &mut ExpressionEvaluator;
     
 }

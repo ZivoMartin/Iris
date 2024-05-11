@@ -15,10 +15,6 @@ impl Request for FromWhereReq {
     }
 
     fn end(&mut self, database: &mut Database) -> ConsumeResult {
-        if !self.string_builder.is_empty() {
-            self.push_string()
-        }
-        database.test_column_existance(&self.table_name, self.expr.fields())?;
         self.table_name.clear();
         self.where_passed = false;
         Ok(())
@@ -58,6 +54,9 @@ impl FromWhereReq {
                return Err(format!("Error: table {} don't exists.", self.table_name))
            }
        } else {
+           if !database.get_table(self.table_name()).column_exists(&name) {
+               return Err(format!("The column {} doesn't exists for the table {}", name, self.table_name()))
+           }
            self.expr.new_field(name)
        }
         Ok(())
@@ -87,6 +86,16 @@ impl FromWhereReq {
 
     pub fn table_name(&self) -> &String {
         &self.table_name
-    } 
+    }
+
+    pub fn get_where_expr(&mut self) -> &mut ExpressionEvaluator {
+        &mut self.expr
+    }
+
+    pub fn push_last_string(&mut self) {
+        if !self.string_builder.is_empty() {
+            self.push_string()
+        }
+    }
     
 }

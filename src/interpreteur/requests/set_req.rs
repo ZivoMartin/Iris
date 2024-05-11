@@ -78,6 +78,8 @@ impl Request for SetReq {
     }
 
     fn end(&mut self, database: &mut Database) -> ConsumeResult {
+        self.from_where.push_last_string();
+        database.get_table_mut(self.from_where.table_name()).browse(self);
         self.from_where.end(database)?;
         self.redirect = false;
         self.aff_vec.clear();
@@ -121,4 +123,16 @@ impl SetReq {
     fn get_last_update(&mut self) -> &mut Update {
         self.aff_vec.last_mut().expect("SetReq: aff_vec empty..")
     }
+}
+
+impl BrowserReq for SetReq {
+
+    fn browse_action(&mut self) {
+        println!("Set")
+    }
+
+    fn get_expr(&mut self) -> &mut ExpressionEvaluator {
+        self.from_where.get_where_expr()
+    }
+    
 }
