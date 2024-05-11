@@ -14,9 +14,10 @@ impl Request for FromWhereReq {
         Box::from(FromWhereReq::pure_new())
     }
 
-    fn end(&mut self, database: &mut Database) -> ConsumeResult {
+    fn end(&mut self, _database: &mut Database) -> ConsumeResult {
         self.table_name.clear();
         self.where_passed = false;
+        self.expr.clear();
         Ok(())
     }
     

@@ -106,7 +106,7 @@ impl InsertReq {
             if column.get_type() == Type::String {
                 return Err(format!("Error during insert request in the table {}, a string was expected for the column {}.", self.table_name, column.name()))
             }
-            self.values.push(Value::new_by_val(self.expr.compute(Map::new(), true)));
+            self.values.push(Value::new_by_val(self.expr.compute(&Map::new(), true)));
         } else {
             if column.get_type() != Type::String {
                 return Err(format!("Error during insert request in the table {}, the column {} doesn't have the String type.", self.table_name, column.name()))

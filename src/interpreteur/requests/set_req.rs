@@ -20,7 +20,7 @@ impl Update {
     }
 
     fn has_operator(&self) -> bool {
-        self.operator.is_empty()
+        !self.operator.is_empty()
     }
 
     fn test_string_exp_compability(&self) -> ConsumeResult {
@@ -79,7 +79,9 @@ impl Request for SetReq {
 
     fn end(&mut self, database: &mut Database) -> ConsumeResult {
         self.from_where.push_last_string();
-        database.get_table_mut(self.from_where.table_name()).browse(self);
+        let table = database.get_table_mut(self.from_where.table_name());
+        table.browse(self);
+        table.actualise_table_file();
         self.from_where.end(database)?;
         self.redirect = false;
         self.aff_vec.clear();
@@ -127,8 +129,10 @@ impl SetReq {
 
 impl BrowserReq for SetReq {
 
-    fn browse_action(&mut self) {
-        println!("Set")
+    fn browse_action(&mut self, line: &mut Map::<String, JsonValue>, _line_number: usize) {
+        for aff in self.aff_vec.iter_mut() {
+            line[&aff.column] = aff.expr.compute(line, false).into();
+        }
     }
 
     fn get_expr(&mut self) -> &mut ExpressionEvaluator {

@@ -70,7 +70,7 @@ impl CreateReq {
     fn extract_col(&mut self) -> Column {
         let mut result = self.current_col.take().unwrap();
         if !self.expr.is_empty() {
-            result.set_default_value(self.expr.compute(Map::new(), true)); 
+            result.set_default_value(self.expr.compute(&Map::new(), true)); 
         } else if !self.string_builder.is_empty() {
             result.set_value_by_string(&mut self.string_builder)
         }

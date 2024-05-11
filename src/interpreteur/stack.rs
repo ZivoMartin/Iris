@@ -23,7 +23,10 @@ impl<T> Stack<T>{
     //         vec: self.vec.clone()
     //     }
     // }
-    
+
+    pub fn clear(&mut self) {
+        self.vec.clear()
+    }
     
     pub fn push(&mut self, x: T){
         self.vec.push(x);

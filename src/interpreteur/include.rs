@@ -4,7 +4,7 @@ pub use super::expression_evaluator::ExpressionEvaluator;
 pub use super::string_builder::StringBuilder;
 pub use std::collections::HashMap;
 pub type ConsumeResult = Result<(), String>;
-
+pub use super::stack::Stack;
 use std::fs::{
     File,
     OpenOptions,
@@ -131,9 +131,9 @@ fn extract_vec_from_json(json_value: &JsonValue) -> Vec::<JsonValue> {
      }
 }
 
-fn extract_map_from_json(json_value: &JsonValue) -> Map::<String, JsonValue> {
+fn extract_map_from_json(json_value: &mut JsonValue) -> &mut Map::<String, JsonValue> {
      match json_value {
-         JsonValue::Object(map) => map.clone(),
+         JsonValue::Object(map) => map,
          _ => panic!("Failed to catch a vector for the column name")
      }
 }
@@ -300,7 +300,7 @@ impl Table {
         self.actualise_table_file();
     }
 
-    fn actualise_table_file(&mut self) {
+    pub fn actualise_table_file(&mut self) {
         let lines = self.lines.clone();
         self.table_file().set_len(0).expect("Failed to reset the data file len");
         self.table_file()
@@ -339,6 +339,12 @@ impl Table {
         self.columns.contains_key(name)
     }
 
+    pub fn drop_lines(&mut self, stack_line_number: &mut Stack<usize>) {
+        while !stack_line_number.is_empty() {
+            self.lines.remove(stack_line_number.pop().unwrap());
+        }
+        self.actualise_table_file();
+    }
     
     pub fn get_column(&self, name: &String) -> &Column {
         self.columns.get(name).expect(&format!("ERROR: Column {name} doesn't exists in the table {}", self.name))
@@ -391,10 +397,10 @@ impl Table {
     }
 
     pub fn browse(&mut self, browser: &mut dyn BrowserReq) {
-        for line in self.lines.iter() {
-            if browser.get_expr().compute(extract_map_from_json(line), false) != 0 {
-                browser.browse_action();
-                println!("{line:?}");
+        for (i, line) in self.lines.iter_mut().enumerate() {
+            let map = extract_map_from_json(line);
+            if browser.get_expr().compute(map, false) != 0 {
+                browser.browse_action(map, i);
             }
         }
     }
@@ -547,7 +553,7 @@ pub  trait Request {
 
 pub trait BrowserReq {
 
-    fn browse_action(&mut self);
+    fn browse_action(&mut self, line: &mut Map::<String, JsonValue>, i: usize);
 
     fn get_expr(&mut self) -> &mut ExpressionEvaluator;
     

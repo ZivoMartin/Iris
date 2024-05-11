@@ -1,1 +1,1 @@
-[{"columns":[{"default_value":"Clown","name":"the_name","type_col":"STRING"},{"default_value":"","name":"age","type_col":"INT"},{"default_value":"","name":"id","type_col":"INT"},{"default_value":"1","name":"vivant","type_col":"BOOL"}],"name":"Humain","p_key":"id"}]
+[{"columns":[{"default_value":"1","name":"vivant","type_col":"BOOL"},{"default_value":"","name":"age","type_col":"INT"},{"default_value":"","name":"id","type_col":"INT"},{"default_value":"Clown","name":"the_name","type_col":"STRING"}],"name":"Humain","p_key":"id"}]

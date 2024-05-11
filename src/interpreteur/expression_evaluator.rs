@@ -30,6 +30,11 @@ impl ExpressionEvaluator {
         }
     }
 
+    pub fn clear(&mut self) {
+        self.pf_exp.clear();
+        self.op_stack.clear();
+    }
+
     pub fn is_empty(&self) -> bool {
         self.pf_exp.is_empty()
     }
@@ -86,12 +91,13 @@ impl ExpressionEvaluator {
     }
 
     fn push_op_val(&mut self) {
-        let operation: Operation = *self.op_map.get(&self.op_stack.pop().unwrap()).unwrap();
+        let op_string = &self.op_stack.pop().expect("Operator stack empty");
+        let operation: Operation = *self.op_map.get(op_string).expect("Operator doesn't exists");
         self.pf_exp.push(ExpTokenType::Operator(operation));
     }
 
 
-    pub fn compute(&mut self, mut fields: Map<String, JsonValue>, clear: bool) -> Number {
+    pub fn compute(&mut self, fields: &Map<String, JsonValue>, clear: bool) -> Number {
         while !self.op_stack.is_empty() {
             self.push_op_val();
         }
@@ -110,8 +116,8 @@ impl ExpressionEvaluator {
     }
 
     fn op_found(&self, number_stack: &mut Stack<Number>, operation: Operation) {
-        let n1 = number_stack.pop().unwrap();
         let n2 = number_stack.pop().unwrap();
+        let n1 = number_stack.pop().unwrap();
         self.number_found(number_stack, operation(n1, n2));
     }
 
