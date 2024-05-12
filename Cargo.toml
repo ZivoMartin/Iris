@@ -7,7 +7,7 @@ edition = "2021"
 
 [dependencies]
 serde_json = "1.0.113"
+homedir = "0.2.1"
 
-[dependencies.sdl2]
-version = "0.32.1"
-features = ["ttf"]
+[lib]
+crate-type =["cdylib"]

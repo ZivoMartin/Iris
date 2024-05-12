@@ -1,5 +1,6 @@
 mod tokenizer;
 mod interpreteur;
+mod c_extention;
 use interpreteur::interpreteur::Interpreteur;
 use std::process::exit;
 use std::env;
@@ -9,9 +10,12 @@ use std::sync::mpsc::channel;
 use std::sync::mpsc::Receiver;
 use std::fs::{
     File,
-    OpenOptions
+    OpenOptions,
+    create_dir
 };
 use std::io::Read;
+use std::path::Path;
+
 
 trait RequestParameter {
 
@@ -89,7 +93,7 @@ struct Run {
 impl Run {
     fn new() -> Box<dyn RequestParameter> {
         Box::from(Run {
-            entry_file: OpenOptions::new().read(true).open(ENTRY_FILE.to_string()).expect("Failed to open entry file from runner")
+            entry_file: OpenOptions::new().read(true).open(get_iris_path() + ENTRY_FILE).expect("Failed to open entry file from runner")
         })
     }
 
@@ -103,8 +107,9 @@ impl Run {
 impl RequestParameter for Run {
 
     fn execute(&mut self, mut tokenizer: Tokenizer, interp: &mut Interpreteur, receiver: &Receiver<TokenizerMessage>) -> Tokenizer {
-        let mut executer = OneFile::new(ENTRY_FILE.to_string());
+        let mut executer = OneFile::new(get_iris_path() + ENTRY_FILE);
         loop {
+            println!("running...");
             if self.new_request() {
                 tokenizer = executer.execute(tokenizer, interp, receiver)
             }
@@ -121,6 +126,7 @@ impl RequestParameter for Run {
 ///     -f $file_name.sql : execute the content of the .sql file.
 ///     -run: Continue to run and consume all the request in the requests file
 fn main() {
+    pre_init_database();
     let mut args: Vec<String> = env::args().collect();
     let mut actions = Vec::<Box<dyn RequestParameter>>::new();
     let mut iter = args.iter_mut().skip(1);
@@ -155,6 +161,15 @@ fn main() {
     }
 }
 
+fn pre_init_database() {
+    let iris_path = get_iris_path();
+    if !Path::new(&iris_path).is_dir() {
+        create_dir(&iris_path).expect("Failed to create database directory");
+    }
+    if !Path::new(&(iris_path.clone() + ENTRY_FILE)).exists() {
+        File::create(iris_path + ENTRY_FILE).expect("Failed to create entry file");
+    }
+}
 
 fn execute(interp: &mut Interpreteur, receiver: &Receiver<TokenizerMessage>) -> Result<Tokenizer, String> {
     let mut tokenizer: Option<Tokenizer> = None;
@@ -175,4 +190,8 @@ fn execute(interp: &mut Interpreteur, receiver: &Receiver<TokenizerMessage>) -> 
 fn error_catched(err: &str) {
     println!("{err}");
     exit(1)
+}
+
+pub fn get_iris_path() -> String {
+    homedir::get_my_home().unwrap().unwrap().into_os_string().into_string().unwrap() + "/.iris/"
 }

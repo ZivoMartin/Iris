@@ -16,7 +16,9 @@ use std::io::{
     Read
 };
 
-use std::path::Path;
+use std::path::{
+    Path,
+};
 
 use std::fmt;
 
@@ -27,7 +29,7 @@ pub use serde_json::{
     Number
 };
 
-
+use crate::get_iris_path;
 
 pub static ALL_INDICATOR: &str = "*";
 
@@ -309,7 +311,7 @@ impl Table {
     }
     
     pub fn get_table_file_path(&self) -> String {
-        "database/".to_string() + self.name()
+        get_iris_path() + self.name()
     }
 
     pub fn table_file(&mut self) -> &mut File {
@@ -413,7 +415,6 @@ pub struct Database {
     json_table_data: Vec<JsonValue>
 }
 
-static DATA_PATH: &str = "database/tables.json";
 
 impl Database {
 
@@ -426,13 +427,15 @@ impl Database {
     }
 
     fn load_data_file() -> File {
+        let iris_path = get_iris_path();
         let mut create = false;
-        let path = Path::new(DATA_PATH);
+        let data_path = iris_path + "/tables.json";
+        let path = Path::new(&data_path);
         if !path.exists() {
             create = true;
             File::create(path).expect("Failed to create the data file");
         }
-        let mut file = open_file(DATA_PATH);
+        let mut file = open_file(&data_path);
         if create {
             file.write_all("[]".as_bytes()).expect("write failed");
         }
