@@ -1,14 +1,15 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-
+#ifndef SAFE_IRIS
+#define SAFE_IRIS
 
 extern void iris_new_request(char* req);
 extern void iris_load_file(char* path);
 
-
-int main() {
-	iris_load_file("demo.sql");
-	iris_new_request("SELECT * FROM Humain WHERE 1==1;");
-	return 0;
+void new_request(char* req) {
+	iris_new_request(req);
 }
+
+void load_file(char* path) {
+	iris_load_file(path);
+}
+
+#endif
